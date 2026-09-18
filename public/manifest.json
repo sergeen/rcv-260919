@@ -1,0 +1,10 @@
+{
+  "name": "REQUIEM CABARET VOLTAIRE 2026 - LED Controller",
+  "short_name": "RCV 2026",
+  "description": "Mobile LED Stage Controller for WS2812B via ELEGOO Mega 2560",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#000000",
+  "theme_color": "#000000"
+}

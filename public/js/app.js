@@ -31,6 +31,28 @@ class App {
 
     // WebSocket init
     this.connectWebSocket();
+
+    // Mobile default landscape initialization
+    this.initMobileLandscape();
+  }
+
+  initMobileLandscape() {
+    // Detect mobile / touch devices (desktop remains completely as is)
+    const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) ||
+                     (window.matchMedia('(pointer: coarse)').matches && window.innerWidth < 1024);
+
+    if (isMobile) {
+      const lockLandscape = () => {
+        if (screen.orientation && screen.orientation.lock) {
+          screen.orientation.lock('landscape').catch(() => {});
+        }
+      };
+
+      lockLandscape();
+      ['pointerdown', 'touchstart', 'click'].forEach(evt => {
+        window.addEventListener(evt, lockLandscape, { once: true, passive: true });
+      });
+    }
   }
 
   initDomReferences() {
@@ -541,6 +563,9 @@ class App {
         el.requestFullscreen().catch(err => console.warn('Fullscreen error:', err));
       } else if (el.webkitRequestFullscreen) {
         el.webkitRequestFullscreen();
+      }
+      if (screen.orientation && screen.orientation.lock) {
+        screen.orientation.lock('landscape').catch(() => {});
       }
     } else {
       if (document.exitFullscreen) {
