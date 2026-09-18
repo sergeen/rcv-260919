@@ -25,6 +25,7 @@ class StageEngine {
     this.dragTarget = null; // { type: 'handle', segment, handle: 'p1'|'p2' } or { type: 'circle', circle, others: [] } or { type: 'segment_body', segment }
     this.dragStart = { x: 0, y: 0 };
     this.hasMoved = false;
+    this.lastLiveSyncTime = 0;
 
     // Mode for placing a new circle
     this.placementMode = null; // null or { presetIndex, template }
@@ -171,6 +172,13 @@ class StageEngine {
       seg.p2.y = Math.max(10, Math.min(this.height - 10, this.dragTarget.startP2.y + dy));
       this.app.scenesController.markActiveSceneModified();
     }
+
+    // High-frequency live streaming to other devices and Arduino while dragging
+    const now = performance.now();
+    if (now - this.lastLiveSyncTime > 25) { // ~40 FPS
+      this.lastLiveSyncTime = now;
+      this.app.sendLiveStageUpdate();
+    }
   }
 
   onPointerUp(e) {
@@ -252,9 +260,11 @@ class StageEngine {
       // Stream LED frames at ~30-35 FPS
       if (time - lastStreamTime >= 28) {
         lastStreamTime = time;
-        const frameData = this.calculateLedFrame();
-        if (frameData && this.app) {
-          this.app.sendLedFrame(frameData);
+        if (this.app && this.app.shouldStreamFrames()) {
+          const frameData = this.calculateLedFrame();
+          if (frameData) {
+            this.app.sendLedFrame(frameData);
+          }
         }
       }
 

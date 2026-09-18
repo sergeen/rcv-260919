@@ -29,11 +29,53 @@ class App {
     this.initDomReferences();
     this.bindDomEvents();
 
+    this.lastInteractionTime = Date.now();
+
     // WebSocket init
     this.connectWebSocket();
 
     // Mobile default landscape initialization
     this.initMobileLandscape();
+  }
+
+  markUserInteracted() {
+    this.lastInteractionTime = Date.now();
+  }
+
+  shouldStreamFrames() {
+    // Stream frames if dragging, interacting recently, or glitch is active
+    if (this.stage && this.stage.dragTarget) return true;
+    if (Date.now() - this.lastInteractionTime < 4000) return true;
+    if (this.stage && this.stage.circles) {
+      return this.stage.circles.some(c => !c.off && c.glitch > 0);
+    }
+    return false;
+  }
+
+  sendLiveStageUpdate() {
+    this.markUserInteracted();
+    if (this.ws && this.wsConnected && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify({
+        type: 'STAGE_LIVE_UPDATE',
+        sceneId: this.scenesController.activeSceneId,
+        segments: this.stage.segments,
+        circles: this.stage.circles
+      }));
+    }
+  }
+
+  sendLiveModifierUpdate(prop, value) {
+    this.markUserInteracted();
+    if (this.ws && this.wsConnected && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify({
+        type: 'MODIFIER_LIVE_UPDATE',
+        sceneId: this.scenesController.activeSceneId,
+        segments: this.stage.segments,
+        circles: this.stage.circles,
+        prop: prop,
+        value: value
+      }));
+    }
   }
 
   initMobileLandscape() {
@@ -204,6 +246,21 @@ class App {
       this.updateStatusBadge();
     } else if (msg.type === 'STATE_UPDATE') {
       this.applyFullState(msg.state, false);
+    } else if (msg.type === 'STAGE_LIVE_UPDATE' || msg.type === 'MODIFIER_LIVE_UPDATE') {
+      if (msg.sceneId === this.scenesController.activeSceneId) {
+        if (!this.stage.dragTarget) {
+          this.stage.segments = msg.segments.map(s => ({ ...s }));
+          this.stage.circles = msg.circles.map(c => ({ ...c }));
+          this.renderMappingsTable();
+          this.renderCreatedCirclesUI();
+          if (msg.type === 'MODIFIER_LIVE_UPDATE' && msg.prop) {
+            const selected = this.stage.getSelectedItems();
+            if (selected.length > 0) {
+              this.modifiers.syncWithSelection(selected);
+            }
+          }
+        }
+      }
     } else if (msg.type === 'SCENE_CHANGED') {
       this.scenesController.selectScene(msg.sceneId);
     }
@@ -518,7 +575,7 @@ class App {
     });
 
     this.scenesController.markActiveSceneModified();
-    this.syncStateToServer();
+    this.sendLiveModifierUpdate(prop, value);
   }
 
   deleteSelectedElements() {

@@ -49,6 +49,14 @@ function saveState() {
   }
 }
 
+let saveTimeout = null;
+function debouncedSaveState(delay = 400) {
+  if (saveTimeout) clearTimeout(saveTimeout);
+  saveTimeout = setTimeout(() => {
+    saveState();
+  }, delay);
+}
+
 loadState();
 
 // Express App setup
@@ -133,8 +141,36 @@ wss.on('connection', (ws) => {
         serialManager.sendLedFrame(buf);
       } else if (data.type === 'SYNC_STATE') {
         appState = data.state;
-        saveState();
+        debouncedSaveState(300);
         broadcast({ type: 'STATE_UPDATE', state: appState }, ws);
+      } else if (data.type === 'STAGE_LIVE_UPDATE') {
+        if (appState.scenes && appState.scenes[data.sceneId]) {
+          appState.scenes[data.sceneId].isCustomized = true;
+          appState.scenes[data.sceneId].segments = data.segments;
+          appState.scenes[data.sceneId].circles = data.circles;
+        }
+        debouncedSaveState(600);
+        broadcast({
+          type: 'STAGE_LIVE_UPDATE',
+          sceneId: data.sceneId,
+          segments: data.segments,
+          circles: data.circles
+        }, ws);
+      } else if (data.type === 'MODIFIER_LIVE_UPDATE') {
+        if (appState.scenes && appState.scenes[data.sceneId]) {
+          appState.scenes[data.sceneId].isCustomized = true;
+          appState.scenes[data.sceneId].segments = data.segments;
+          appState.scenes[data.sceneId].circles = data.circles;
+        }
+        debouncedSaveState(600);
+        broadcast({
+          type: 'MODIFIER_LIVE_UPDATE',
+          sceneId: data.sceneId,
+          segments: data.segments,
+          circles: data.circles,
+          prop: data.prop,
+          value: data.value
+        }, ws);
       } else if (data.type === 'SCENE_CHANGE') {
         appState.activeSceneId = data.sceneId;
         saveState();
