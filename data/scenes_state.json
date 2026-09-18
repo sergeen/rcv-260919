@@ -6,64 +6,181 @@
       "segments": [
         {
           "id": "AB",
-          "p1": { "x": 150, "y": 260 },
-          "p2": { "x": 820, "y": 180 },
+          "p1": {
+            "x": 205.2313883299799,
+            "y": 118.08118081180811
+          },
+          "p2": {
+            "x": 719.3158953722334,
+            "y": 117.15867158671587
+          },
+          "startLed": 1,
+          "endLed": 40,
+          "off": false,
+          "glitch": 0,
+          "color": "#00ff9d"
+        },
+        {
+          "id": "BC",
+          "p1": {
+            "x": 205.2313883299799,
+            "y": 116.23616236162361
+          },
+          "p2": {
+            "x": 207.24346076458752,
+            "y": 299.8154981549815
+          },
+          "startLed": 41,
+          "endLed": 80,
+          "off": false,
+          "glitch": 55
+        },
+        {
+          "id": "CD",
+          "p1": {
+            "x": 207.24346076458752,
+            "y": 301.6605166051661
+          },
+          "p2": {
+            "x": 718.3098591549297,
+            "y": 299.8154981549815
+          },
+          "startLed": 81,
+          "endLed": 120,
+          "off": false
+        },
+        {
+          "id": "DE",
+          "p1": {
+            "x": 718.3098591549297,
+            "y": 298.8929889298893
+          },
+          "p2": {
+            "x": 720.3219315895373,
+            "y": 119.00369003690037
+          },
+          "startLed": 121,
+          "endLed": 160,
+          "off": false
+        }
+      ],
+      "circles": [
+        {
+          "id": "A",
+          "x": 380.0603621730381,
+          "y": 137.2103321033209,
+          "size": 70,
+          "color": "#ff0022",
+          "glitch": 4,
+          "off": false
+        },
+        {
+          "id": "B",
+          "x": 410.11031088266895,
+          "y": 480,
+          "size": 60,
+          "color": "#00b48a",
+          "glitch": 0,
+          "off": false
+        }
+      ]
+    },
+    "!": {
+      "isCustomized": false,
+      "segments": [],
+      "circles": []
+    },
+    "?": {
+      "isCustomized": false,
+      "segments": [],
+      "circles": []
+    },
+    "/": {
+      "isCustomized": false,
+      "segments": [],
+      "circles": []
+    },
+    "[": {
+      "isCustomized": false,
+      "segments": [],
+      "circles": []
+    },
+    "-": {
+      "isCustomized": false,
+      "segments": [],
+      "circles": []
+    },
+    ":": {
+      "isCustomized": true,
+      "segments": [
+        {
+          "id": "AB",
+          "p1": {
+            "x": 540.241448692153,
+            "y": 392.9889298892989
+          },
+          "p2": {
+            "x": 820,
+            "y": 180
+          },
           "startLed": 1,
           "endLed": 40,
           "off": false
         },
         {
           "id": "BC",
-          "p1": { "x": 580, "y": 210 },
-          "p2": { "x": 820, "y": 330 },
+          "p1": {
+            "x": 146.88128772635815,
+            "y": 242.61992619926198
+          },
+          "p2": {
+            "x": 814.8893360160965,
+            "y": 162.36162361623616
+          },
           "startLed": 41,
           "endLed": 80,
-          "off": true
+          "off": false
         }
       ],
-      "circles": [
-        {
-          "id": "A",
-          "x": 330,
-          "y": 260,
-          "size": 70,
-          "color": "#1e60ff",
-          "glitch": 0,
-          "off": false
-        },
-        {
-          "id": "B",
-          "x": 500,
-          "y": 270,
-          "size": 75,
-          "color": "#00ff66",
-          "glitch": 30,
-          "off": true
-        },
-        {
-          "id": "C",
-          "x": 630,
-          "y": 230,
-          "size": 70,
-          "color": "#ff00bb",
-          "glitch": 75,
-          "off": false
-        }
-      ]
+      "circles": []
     },
-    "!": { "isCustomized": false, "segments": [], "circles": [] },
-    "?": { "isCustomized": false, "segments": [], "circles": [] },
-    "/": { "isCustomized": false, "segments": [], "circles": [] },
-    "[": { "isCustomized": false, "segments": [], "circles": [] },
-    "-": { "isCustomized": false, "segments": [], "circles": [] },
-    ":": { "isCustomized": false, "segments": [], "circles": [] },
-    ">": { "isCustomized": false, "segments": [], "circles": [] }
+    ">": {
+      "isCustomized": false,
+      "segments": [],
+      "circles": []
+    }
   },
   "predefinedCircles": [
-    { "index": 0, "color": "#00b48a", "glitch": 0, "size": 60, "fill": "#00b48a" },
-    { "index": 1, "color": "#002699", "glitch": 25, "size": 70, "fill": "#002699" },
-    { "index": 2, "color": "#66ff00", "glitch": 55, "size": 65, "fill": "#66ff00" },
-    { "index": 3, "color": "#ffffff", "glitch": 90, "size": 70, "fill": "transparent" }
+    {
+      "index": 0,
+      "color": "#00b48a",
+      "glitch": 0,
+      "size": 60,
+      "fill": "#00b48a"
+    },
+    {
+      "index": 1,
+      "color": "#002699",
+      "glitch": 25,
+      "size": 70,
+      "fill": "#002699"
+    },
+    {
+      "index": 2,
+      "color": "#66ff00",
+      "glitch": 55,
+      "size": 65,
+      "fill": "#66ff00"
+    },
+    {
+      "index": 3,
+      "color": "#ffffff",
+      "glitch": 90,
+      "size": 70,
+      "fill": "transparent"
+    }
   ],
-  "selectedElementIds": ["circle-A"]
+  "selectedElementIds": [
+    "circle-B"
+  ]
 }

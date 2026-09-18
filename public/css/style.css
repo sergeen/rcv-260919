@@ -242,6 +242,43 @@ html, body {
   z-index: 10;
 }
 
+/* Small fullscreen button in top right corner of stage */
+.stage-fullscreen-btn {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  width: 26px;
+  height: 26px;
+  background: rgba(0, 0, 0, 0.75);
+  border: 1px solid var(--border-green);
+  color: var(--cyber-green);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+  transition: all 0.15s ease;
+  padding: 0;
+}
+
+.stage-fullscreen-btn:hover {
+  background: rgba(0, 255, 65, 0.15);
+  border-color: var(--cyber-green);
+  box-shadow: 0 0 6px rgba(0, 255, 65, 0.4);
+}
+
+.stage-fullscreen-btn:active,
+.stage-fullscreen-btn.active {
+  background: var(--border-green);
+  color: #000;
+  border-color: var(--cyber-green);
+}
+
+.stage-fullscreen-btn svg {
+  stroke: currentColor;
+  transition: transform 0.2s ease;
+}
+
 .dot {
   width: 8px;
   height: 8px;

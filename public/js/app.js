@@ -55,9 +55,32 @@ class App {
     this.statusIndicator = document.getElementById('statusIndicator');
     this.wifiIpDisplay = document.getElementById('wifiIpDisplay');
     this.qrCodeContainer = document.getElementById('qrCodeContainer');
+    this.btnFullscreen = document.getElementById('btnFullscreen');
   }
 
   bindDomEvents() {
+    // Fullscreen toggle button
+    if (this.btnFullscreen) {
+      this.btnFullscreen.addEventListener('click', () => {
+        this.toggleFullscreen();
+      });
+
+      const updateFullscreenIcon = () => {
+        const isFull = !!(document.fullscreenElement || document.webkitFullscreenElement);
+        this.btnFullscreen.classList.toggle('active', isFull);
+        this.btnFullscreen.innerHTML = isFull
+          ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+               <path d="M4 14h6m0 0v6m0-6L3 21m17-7h-6m0 0v6m0-6l7 7M4 10h6m0 0V4m0 6L3 3m17 7h-6m0 0V4m0 6l7-7"/>
+             </svg>`
+          : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+               <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+             </svg>`;
+      };
+
+      document.addEventListener('fullscreenchange', updateFullscreenIcon);
+      document.addEventListener('webkitfullscreenchange', updateFullscreenIcon);
+    }
+
     // Add mapping group button
     if (this.addMappingBtn) {
       this.addMappingBtn.addEventListener('click', () => this.addNewMappingGroup());
@@ -509,6 +532,23 @@ class App {
     this.renderMappingsTable();
     this.renderCreatedCirclesUI();
     this.syncStateToServer();
+  }
+
+  toggleFullscreen() {
+    if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+      const el = document.documentElement;
+      if (el.requestFullscreen) {
+        el.requestFullscreen().catch(err => console.warn('Fullscreen error:', err));
+      } else if (el.webkitRequestFullscreen) {
+        el.webkitRequestFullscreen();
+      }
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen().catch(err => console.warn('Exit fullscreen error:', err));
+      } else if (document.webkitExitFullscreen) {
+        document.webkitExitFullscreen();
+      }
+    }
   }
 
   showConfirmModal(message, onConfirm) {
