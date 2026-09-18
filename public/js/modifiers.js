@@ -75,6 +75,31 @@ class ModifiersController {
         this.setSizeFromValue(val);
       });
     }
+
+    // Recalculate slider heights on window resize and orientation change
+    window.addEventListener('resize', () => this.adjustSlidersHeight());
+    window.addEventListener('orientationchange', () => {
+      setTimeout(() => this.adjustSlidersHeight(), 150);
+    });
+
+    // Initial height adaptation to container
+    requestAnimationFrame(() => this.adjustSlidersHeight());
+    setTimeout(() => this.adjustSlidersHeight(), 150);
+  }
+
+  /**
+   * Dynamically calculate available container height and adapt sliders to it
+   */
+  adjustSlidersHeight() {
+    const wraps = document.querySelectorAll('.slider-vertical-wrap');
+    wraps.forEach(wrap => {
+      const slider = wrap.querySelector('.vertical-slider');
+      if (slider && wrap.clientHeight > 0) {
+        const availableHeight = Math.max(60, wrap.clientHeight - 8);
+        slider.style.height = `${availableHeight}px`;
+        wrap.style.setProperty('--slider-calculated-height', `${availableHeight}px`);
+      }
+    });
   }
 
   getColorAtValue(val) {

@@ -41,11 +41,11 @@ class ScenesController {
   }
 
   bindEvents() {
-    const pad = document.getElementById('scenesDiamondPad');
+    const pad = document.getElementById('scenesGrid') || document.getElementById('scenesDiamondPad');
     if (!pad) return;
 
     pad.addEventListener('click', (e) => {
-      const btn = e.target.closest('.scene-diamond-btn');
+      const btn = e.target.closest('.scene-grid-btn, .scene-diamond-btn');
       if (!btn) return;
       const sceneId = btn.dataset.scene;
       if (sceneId) {
@@ -93,7 +93,7 @@ class ScenesController {
   }
 
   updateSceneButtonsUI() {
-    const buttons = document.querySelectorAll('.scene-diamond-btn');
+    const buttons = document.querySelectorAll('.scene-grid-btn, .scene-diamond-btn');
     buttons.forEach(btn => {
       const isCurrent = btn.dataset.scene === this.activeSceneId;
       btn.classList.toggle('active', isCurrent);

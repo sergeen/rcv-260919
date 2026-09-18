@@ -68,8 +68,8 @@ html, body {
    ============================================================================== */
 .app-container {
   display: grid;
-  grid-template-columns: 140px 1fr 200px;
-  grid-template-rows: 1fr 40px 65px;
+  grid-template-columns: 140px 1fr 180px;
+  grid-template-rows: 1fr 38px 54px;
   width: 100vw;
   height: 100vh;
   background-color: var(--bg-black);
@@ -87,8 +87,9 @@ html, body {
   justify-content: space-around;
   align-items: stretch;
   border: 1px solid var(--border-green);
-  padding: 10px 4px;
+  padding: 8px 4px;
   background-color: rgba(0, 15, 5, 0.7);
+  overflow: hidden;
 }
 
 .modifier-col {
@@ -97,6 +98,7 @@ html, body {
   align-items: center;
   flex: 1;
   position: relative;
+  overflow: hidden;
 }
 
 .modifier-col:not(:last-child) {
@@ -107,9 +109,10 @@ html, body {
   font-size: 13px;
   letter-spacing: 1.5px;
   color: var(--cyber-green);
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   text-transform: uppercase;
   font-weight: bold;
+  flex-shrink: 0;
 }
 
 /* Color Swatch */
@@ -118,15 +121,17 @@ html, body {
   height: 14px;
   background-color: #1e60ff;
   border: 1px solid #000;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
   box-shadow: 0 0 6px #1e60ff;
+  flex-shrink: 0;
 }
 
 /* Glitch Indicator Boxes □□□ */
 .glich-boxes {
   display: flex;
   gap: 3px;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
+  flex-shrink: 0;
 }
 
 .box-indicator {
@@ -145,11 +150,12 @@ html, body {
 .size-value-label {
   font-size: 12px;
   color: var(--cyber-green);
-  margin-bottom: 12px;
+  margin-bottom: 8px;
   height: 14px;
+  flex-shrink: 0;
 }
 
-/* Vertical Slider Wrappers */
+/* Vertical Slider Wrappers: Adapts dynamically to container height */
 .slider-vertical-wrap {
   flex: 1;
   display: flex;
@@ -157,29 +163,33 @@ html, body {
   align-items: center;
   position: relative;
   width: 100%;
+  min-height: 0;
+  overflow: visible;
 }
 
 .vertical-slider {
   writing-mode: vertical-lr;
   direction: rtl;
-  width: 8px;
-  height: 85%;
+  width: 26px;
+  height: var(--slider-calculated-height, 85%);
+  max-height: 100%;
   -webkit-appearance: none;
   appearance: none;
   background: transparent;
   outline: none;
   cursor: pointer;
+  touch-action: none;
 }
 
 /* Range input track & thumb */
 .vertical-slider::-webkit-slider-runnable-track {
-  width: 1.5px;
+  width: 2px;
   background: var(--border-green);
   border: none;
 }
 
 .vertical-slider::-moz-range-track {
-  width: 1.5px;
+  width: 2px;
   background: var(--border-green);
   border: none;
 }
@@ -187,17 +197,17 @@ html, body {
 .vertical-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 18px;
+  width: 20px;
   height: 14px;
   background: var(--cyber-green);
   border: 1px solid #000;
   box-shadow: 0 0 6px var(--cyber-green);
   cursor: pointer;
-  margin-left: -8px;
+  margin-left: -9px;
 }
 
 .vertical-slider::-moz-range-thumb {
-  width: 18px;
+  width: 20px;
   height: 14px;
   background: var(--cyber-green);
   border: 1px solid #000;
@@ -354,15 +364,15 @@ html, body {
 .created-circles-list {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px; /* reduced from 12px */
   overflow-x: auto;
   max-width: 60%;
-  padding: 4px 0;
+  padding: 2px 0;
 }
 
 .circle-badge {
-  width: 40px;
-  height: 40px;
+  width: 32px;  /* 20% smaller: 40px -> 32px */
+  height: 32px; /* 20% smaller: 40px -> 32px */
   border-radius: 50%;
   border: 1.5px solid var(--cyber-green);
   display: flex;
@@ -377,7 +387,7 @@ html, body {
 }
 
 .circle-badge .badge-letter {
-  font-size: 16px;
+  font-size: 13px; /* 20% smaller: 16px -> 13px */
   font-weight: bold;
   color: var(--cyber-green);
 }
@@ -393,12 +403,12 @@ html, body {
 .circle-badge .badge-off {
   position: absolute;
   bottom: -4px;
-  font-size: 8px;
+  font-size: 7px;
   background: #000;
   color: #ffaa00;
   border: 1px solid #ffaa00;
-  padding: 0 2px;
-  line-height: 10px;
+  padding: 0 1px;
+  line-height: 8px;
   font-weight: bold;
 }
 
@@ -452,7 +462,7 @@ html, body {
 }
 
 /* ------------------------------------------------------------------------------
-   RIGHT COLUMN: MAPPING GROUPS & SCENES DIAMOND PAD
+   RIGHT COLUMN: MAPPING GROUPS & SCENES 3X3 GRID
    ------------------------------------------------------------------------------ */
 .panel-right {
   grid-column: 3;
@@ -461,15 +471,16 @@ html, body {
   flex-direction: column;
   border: 1px solid var(--border-green);
   background-color: rgba(0, 15, 5, 0.7);
+  overflow: hidden;
 }
 
-/* Mappings Table */
+/* Mappings Table: prioritized to occupy maximum available vertical space */
 .mappings-section {
   flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  border-bottom: 1px solid var(--border-green);
-  overflow-y: auto;
+  overflow: hidden;
 }
 
 .mappings-header {
@@ -479,6 +490,7 @@ html, body {
   border-bottom: 1px solid var(--border-green);
   padding: 6px 4px;
   background: rgba(0, 30, 10, 0.4);
+  flex-shrink: 0;
 }
 
 .col-name { width: 45%; text-align: left; padding-left: 4px; }
@@ -486,6 +498,7 @@ html, body {
 
 .mappings-list {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
 }
 
@@ -532,6 +545,7 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .btn-add-mapping:active {
@@ -540,72 +554,61 @@ html, body {
 }
 
 /* ------------------------------------------------------------------------------
-   SCENES DIAMOND PAD (ARTISTIC 8-BUTTON RHOMBUS)
+   SCENES SECTION: CONVENTIONAL 3X3 GRID (COMPACT & CONTAINER-ADAPTIVE)
    ------------------------------------------------------------------------------ */
 .scenes-section {
-  height: 200px;
+  flex: 0 0 auto;
+  border-top: 1px solid var(--border-green);
+  padding: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
-  position: relative;
-  padding: 10px;
-  overflow: hidden;
+  background: rgba(0, 10, 3, 0.9);
 }
 
-.scenes-diamond-container {
-  position: relative;
-  width: 150px;
-  height: 165px;
+.scenes-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 26px);
+  gap: 3px;
+  width: 100%;
 }
 
-/* Individual diamond button (rotated 45deg) */
-.scene-diamond-btn {
-  position: absolute;
-  width: 32px;
-  height: 32px;
+.scene-grid-btn {
+  width: 100%;
+  height: 100%;
   background: #000000;
-  border: 1.5px solid var(--border-green);
-  transform: rotate(45deg);
+  border: 1px solid var(--border-green);
+  color: var(--cyber-green);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: bold;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   transition: all 0.15s ease;
+  padding: 0;
 }
 
-.scene-diamond-btn:hover {
+.scene-grid-btn:hover {
   background: rgba(0, 255, 65, 0.15);
   border-color: var(--cyber-green);
 }
 
-.scene-diamond-btn span {
-  transform: rotate(-45deg);
-  display: inline-block;
-  font-size: 17px;
-  font-weight: bold;
-  color: var(--cyber-green);
-  line-height: 1;
-}
-
-/* Active scene button: fades and blinks in dark red! */
-.scene-diamond-btn.active {
+.scene-grid-btn.active {
   animation: activeFadeBlink 1.4s ease-in-out infinite;
   background: rgba(139, 0, 0, 0.3);
-}
-
-.scene-diamond-btn.active span {
   color: var(--active-red);
+  border-color: var(--active-red);
 }
 
-/* Staggered diamond positions */
-.scene-pos-excl    { top: 12px;  left: 54px; }  /* ! */
-.scene-pos-quest   { top: 12px;  left: 88px; }  /* ? */
-.scene-pos-slash   { top: 46px;  left: 37px; }  /* / */
-.scene-pos-bracket { top: 46px;  left: 71px; }  /* [ */
-.scene-pos-minus   { top: 46px;  left: 105px; } /* - */
-.scene-pos-colon   { top: 80px;  left: 54px; }  /* : */
-.scene-pos-tilde   { top: 80px;  left: 88px; }  /* ~ */
-.scene-pos-gt      { top: 114px; left: 71px; }  /* > */
+.scene-grid-btn.empty-slot {
+  border-color: rgba(0, 136, 40, 0.15);
+  background: transparent;
+  cursor: default;
+  pointer-events: none;
+}
 
 /* ------------------------------------------------------------------------------
    MODAL DIALOGS

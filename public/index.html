@@ -111,17 +111,18 @@
         <button class="btn-add-mapping" id="addMappingBtn" title="Añadir nuevo grupo de mapeo">+</button>
       </div>
 
-      <!-- SCENES DIAMOND PAD (8 BUTTONS: ! ? / [ - : > ~) -->
+      <!-- SCENES SECTION: CONVENTIONAL 3X3 GRID -->
       <div class="scenes-section">
-        <div class="scenes-diamond-container" id="scenesDiamondPad">
-          <button class="scene-diamond-btn scene-pos-excl" data-scene="!"><span>!</span></button>
-          <button class="scene-diamond-btn scene-pos-quest" data-scene="?"><span>?</span></button>
-          <button class="scene-diamond-btn scene-pos-slash" data-scene="/"><span>/</span></button>
-          <button class="scene-diamond-btn scene-pos-bracket" data-scene="["><span>[</span></button>
-          <button class="scene-diamond-btn scene-pos-minus" data-scene="-"><span>-</span></button>
-          <button class="scene-diamond-btn scene-pos-colon" data-scene=":"><span>:</span></button>
-          <button class="scene-diamond-btn scene-pos-tilde active" data-scene="~"><span>~</span></button>
-          <button class="scene-diamond-btn scene-pos-gt" data-scene=">"><span>&gt;</span></button>
+        <div class="scenes-grid" id="scenesGrid">
+          <button class="scene-grid-btn" data-scene="!">!</button>
+          <button class="scene-grid-btn" data-scene="?">?</button>
+          <button class="scene-grid-btn" data-scene="/">/</button>
+          <button class="scene-grid-btn" data-scene="[">[</button>
+          <button class="scene-grid-btn" data-scene="-">-</button>
+          <button class="scene-grid-btn" data-scene=":">:</button>
+          <button class="scene-grid-btn" data-scene=">">&gt;</button>
+          <button class="scene-grid-btn active" data-scene="~">~</button>
+          <button class="scene-grid-btn empty-slot" disabled></button>
         </div>
       </div>
 
