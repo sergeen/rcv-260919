@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#000000">
+  <title>REQUIEM CABARET VOLTAIRE 2026 - LED STAGE CONTROLLER</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- MOBILE PORTRAIT ROTATE HELPER -->
+  <div class="orientation-warning" id="orientationWarning">
+    <div class="orientation-icon"></div>
+    <h2>MODO HORIZONTAL REQUERIDO</h2>
+    <p style="margin-top: 10px; font-size: 14px; color: #00aa33;">Gira tu teléfono a posición horizontal para acceder al escenario de control LED.</p>
+  </div>
+
+  <!-- MAIN APP CONTAINER -->
+  <div class="app-container">
+
+    <!-- LEFT COLUMN: MODIFIERS (COLOR, GLICH, SIZE) -->
+    <div class="panel-modifiers">
+      
+      <!-- COLOR -->
+      <div class="modifier-col">
+        <span class="modifier-title">COLOR</span>
+        <div class="color-preview-swatch" id="colorSwatch"></div>
+        <div class="slider-vertical-wrap">
+          <input type="range" id="colorSlider" class="vertical-slider" min="0" max="100" value="64" step="1">
+        </div>
+      </div>
+
+      <!-- GLICH -->
+      <div class="modifier-col">
+        <span class="modifier-title">GLICH</span>
+        <div class="glich-boxes">
+          <div class="box-indicator" id="glichBox1"></div>
+          <div class="box-indicator" id="glichBox2"></div>
+          <div class="box-indicator" id="glichBox3"></div>
+        </div>
+        <div class="slider-vertical-wrap">
+          <input type="range" id="glitchSlider" class="vertical-slider" min="0" max="100" value="0" step="1">
+        </div>
+      </div>
+
+      <!-- SIZE -->
+      <div class="modifier-col">
+        <span class="modifier-title">SIZE</span>
+        <span class="size-value-label" id="sizeValueLabel">70%</span>
+        <div class="slider-vertical-wrap">
+          <input type="range" id="sizeSlider" class="vertical-slider" min="10" max="150" value="70" step="1">
+        </div>
+      </div>
+
+    </div>
+
+    <!-- CENTER STAGE (4PX LINE BORDER) -->
+    <div class="stage-container">
+      <div class="stage-top-status" id="statusIndicator" title="Click para ver configuración y código QR">
+        <span class="dot yellow"></span> INICIALIZANDO...
+      </div>
+      <canvas id="stageCanvas"></canvas>
+    </div>
+
+    <!-- SUBSTAGE BAR: NEW FUNCTIONS PLACEHOLDER, BORRAR, APAGAR -->
+    <div class="substage-bar">
+      <div class="new-functions-placeholder">NEW FUNCTIONS WILL BE HERE</div>
+      <div class="stage-actions">
+        <button class="action-btn" id="btnDeleteElement">BORRAR ELEMENTO</button>
+        <button class="action-btn" id="btnToggleOffElement">APAGAR ELEMENTO</button>
+      </div>
+    </div>
+
+    <!-- BOTTOM BAR: CREATED CIRCLES & PREDEFINED SLOTS -->
+    <div class="bottom-bar">
+      <!-- Created Active Circles List (A, B, C...) -->
+      <div class="created-circles-list" id="createdCirclesList">
+        <!-- Populated dynamically: (A), (B), (C) badges -->
+      </div>
+
+      <!-- Predefined Circles & Add Button -->
+      <div class="predefined-controls">
+        <div class="predefined-circles" id="predefinedCircles">
+          <!-- Populated dynamically: 4 predefined templates -->
+        </div>
+        <button class="add-circle-btn" id="addCircleDefaultBtn" title="Crear círculo básico">+</button>
+      </div>
+    </div>
+
+    <!-- RIGHT PANEL: MAPPING GROUPS & SCENES DIAMOND PAD -->
+    <div class="panel-right">
+      
+      <!-- MAPPINGS TABLE (SEGMENTS) -->
+      <div class="mappings-section">
+        <div class="mappings-header">
+          <div class="col-name">GRUPO</div>
+          <div class="col-led">INICIO</div>
+          <div class="col-led">FIN</div>
+        </div>
+        <div class="mappings-list" id="mappingsList">
+          <!-- Populated dynamically: AB 1 40, BC 41 80... -->
+        </div>
+        <button class="btn-add-mapping" id="addMappingBtn" title="Añadir nuevo grupo de mapeo">+</button>
+      </div>
+
+      <!-- SCENES DIAMOND PAD (8 BUTTONS: ! ? / [ - : > ~) -->
+      <div class="scenes-section">
+        <div class="scenes-diamond-container" id="scenesDiamondPad">
+          <button class="scene-diamond-btn scene-pos-excl" data-scene="!"><span>!</span></button>
+          <button class="scene-diamond-btn scene-pos-quest" data-scene="?"><span>?</span></button>
+          <button class="scene-diamond-btn scene-pos-slash" data-scene="/"><span>/</span></button>
+          <button class="scene-diamond-btn scene-pos-bracket" data-scene="["><span>[</span></button>
+          <button class="scene-diamond-btn scene-pos-minus" data-scene="-"><span>-</span></button>
+          <button class="scene-diamond-btn scene-pos-colon" data-scene=":"><span>:</span></button>
+          <button class="scene-diamond-btn scene-pos-tilde active" data-scene="~"><span>~</span></button>
+          <button class="scene-diamond-btn scene-pos-gt" data-scene=">"><span>&gt;</span></button>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- DELETE CONFIRMATION MODAL -->
+  <div class="modal-overlay hidden" id="confirmModal">
+    <div class="modal-box">
+      <h3>CONFIRMAR ACCIÓN</h3>
+      <p id="confirmMessage">¿Deseas eliminar este elemento?</p>
+      <div class="modal-actions">
+        <button class="btn-modal" id="confirmNoBtn">CANCELAR</button>
+        <button class="btn-modal danger" id="confirmYesBtn">BORRAR</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONNECTION / WIFI MODAL -->
+  <div class="modal-overlay hidden" id="connectionModal">
+    <div class="modal-box">
+      <h3>CONEXIÓN & ESTADO</h3>
+      <p style="margin-bottom: 8px;">Conecta tu celular a la misma red Wi-Fi o punto de acceso de la computadora y abre:</p>
+      <div style="background: #112211; border: 1px solid #00ff41; padding: 10px; margin-bottom: 16px; font-weight: bold; font-size: 16px;" id="wifiIpDisplay">
+        http://192.168.0.219:3000
+      </div>
+      <p style="font-size: 12px; color: #00aa33; margin-bottom: 16px;">
+        Placa: ELEGOO MEGA 2560 (USB Serial 115200 Baud)<br>
+        Tira LED: WS2812B (Pin 6)
+      </p>
+      <div class="modal-actions">
+        <button class="btn-modal" id="closeConnModal">CERRAR</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- JAVASCRIPT MODULES -->
+  <script src="js/glitch.js"></script>
+  <script src="js/modifiers.js"></script>
+  <script src="js/scenes.js"></script>
+  <script src="js/stage.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

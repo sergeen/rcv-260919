@@ -1,0 +1,69 @@
+{
+  "activeSceneId": "~",
+  "scenes": {
+    "~": {
+      "isCustomized": true,
+      "segments": [
+        {
+          "id": "AB",
+          "p1": { "x": 150, "y": 260 },
+          "p2": { "x": 820, "y": 180 },
+          "startLed": 1,
+          "endLed": 40,
+          "off": false
+        },
+        {
+          "id": "BC",
+          "p1": { "x": 580, "y": 210 },
+          "p2": { "x": 820, "y": 330 },
+          "startLed": 41,
+          "endLed": 80,
+          "off": true
+        }
+      ],
+      "circles": [
+        {
+          "id": "A",
+          "x": 330,
+          "y": 260,
+          "size": 70,
+          "color": "#1e60ff",
+          "glitch": 0,
+          "off": false
+        },
+        {
+          "id": "B",
+          "x": 500,
+          "y": 270,
+          "size": 75,
+          "color": "#00ff66",
+          "glitch": 30,
+          "off": true
+        },
+        {
+          "id": "C",
+          "x": 630,
+          "y": 230,
+          "size": 70,
+          "color": "#ff00bb",
+          "glitch": 75,
+          "off": false
+        }
+      ]
+    },
+    "!": { "isCustomized": false, "segments": [], "circles": [] },
+    "?": { "isCustomized": false, "segments": [], "circles": [] },
+    "/": { "isCustomized": false, "segments": [], "circles": [] },
+    "[": { "isCustomized": false, "segments": [], "circles": [] },
+    "-": { "isCustomized": false, "segments": [], "circles": [] },
+    ":": { "isCustomized": false, "segments": [], "circles": [] },
+    ">": { "isCustomized": false, "segments": [], "circles": [] }
+  },
+  "predefinedCircles": [
+    { "index": 0, "color": "#00b48a", "glitch": 0, "size": 60, "fill": "#00b48a" },
+    { "index": 1, "color": "#002699", "glitch": 25, "size": 70, "fill": "#002699" },
+    { "index": 2, "color": "#66ff00", "glitch": 55, "size": 65, "fill": "#66ff00" },
+    { "index": 3, "color": "#ffffff", "glitch": 90, "size": 70, "fill": "transparent" }
+  ],
+  "selectedElementIds": ["circle-A"]
+}

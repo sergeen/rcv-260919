@@ -1,0 +1,27 @@
+{
+  "name": "rcv-260919-led-controller",
+  "version": "1.0.0",
+  "description": "Requiem Cabaret Voltaire 2026 - Mobile Web Controller for WS2812B via ELEGOO Mega 2560",
+  "main": "server/server.js",
+  "scripts": {
+    "start": "node server/server.js",
+    "dev": "node server/server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "ws": "^8.18.0"
+  },
+  "optionalDependencies": {
+    "serialport": "^12.0.0"
+  },
+  "keywords": [
+    "ws2812b",
+    "arduino-mega-2560",
+    "fastled",
+    "lighting-controller",
+    "glitch-art",
+    "cabaret-voltaire"
+  ],
+  "author": "Sergeen",
+  "license": "MIT"
+}
