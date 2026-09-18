@@ -5,6 +5,7 @@ const fs = require('fs');
 const os = require('os');
 const { WebSocketServer, WebSocket } = require('ws');
 const SerialManager = require('./serial_manager');
+const LedEngine = require('./led_engine');
 
 const PORT = process.env.PORT || 3000;
 const DATA_FILE = path.join(__dirname, '..', 'data', 'scenes_state.json');
@@ -15,8 +16,9 @@ const serialManager = new SerialManager({
   autoConnect: true
 });
 
-// Load state from disk
+// Initialize Server-side LED Engine for zero-latency real-time WS2812B streaming
 let appState = null;
+const ledEngine = new LedEngine(serialManager, () => appState);
 function loadState() {
   try {
     if (fs.existsSync(DATA_FILE)) {
@@ -82,6 +84,7 @@ app.post('/api/state', (req, res) => {
   if (req.body && typeof req.body === 'object') {
     appState = req.body;
     saveState();
+    ledEngine.triggerLiveUpdate();
     // Broadcast state update to all other connected clients
     broadcast({ type: 'STATE_UPDATE', state: appState });
     res.json({ ok: true });
@@ -142,6 +145,7 @@ wss.on('connection', (ws) => {
       } else if (data.type === 'SYNC_STATE') {
         appState = data.state;
         debouncedSaveState(300);
+        ledEngine.triggerLiveUpdate();
         broadcast({ type: 'STATE_UPDATE', state: appState }, ws);
       } else if (data.type === 'STAGE_LIVE_UPDATE') {
         if (appState.scenes && appState.scenes[data.sceneId]) {
@@ -150,6 +154,8 @@ wss.on('connection', (ws) => {
           appState.scenes[data.sceneId].circles = data.circles;
         }
         debouncedSaveState(600);
+        // Force immediate render to physical WS2812B strip as circle moves
+        ledEngine.triggerLiveUpdate();
         broadcast({
           type: 'STAGE_LIVE_UPDATE',
           sceneId: data.sceneId,
@@ -163,6 +169,8 @@ wss.on('connection', (ws) => {
           appState.scenes[data.sceneId].circles = data.circles;
         }
         debouncedSaveState(600);
+        // Force immediate render to physical WS2812B strip
+        ledEngine.triggerLiveUpdate();
         broadcast({
           type: 'MODIFIER_LIVE_UPDATE',
           sceneId: data.sceneId,
@@ -174,6 +182,7 @@ wss.on('connection', (ws) => {
       } else if (data.type === 'SCENE_CHANGE') {
         appState.activeSceneId = data.sceneId;
         saveState();
+        ledEngine.triggerLiveUpdate();
         broadcast({ type: 'SCENE_CHANGED', sceneId: data.sceneId }, ws);
       } else if (data.type === 'PING') {
         ws.send(JSON.stringify({ type: 'PONG', time: Date.now() }));

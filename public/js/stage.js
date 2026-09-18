@@ -71,9 +71,8 @@ class StageEngine {
 
     // Check if in placement mode
     if (this.placementMode) {
-      this.app.completeCirclePlacement(pos.x, pos.y, this.placementMode);
-      this.placementMode = null;
-      this.canvas.style.cursor = 'crosshair';
+      const mode = this.placementMode;
+      this.app.completeCirclePlacement(pos.x, pos.y, mode);
       return;
     }
 

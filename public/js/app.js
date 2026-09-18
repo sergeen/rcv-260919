@@ -167,7 +167,14 @@ class App {
     // Add circle default button (+)
     if (this.addCircleDefaultBtn) {
       this.addCircleDefaultBtn.addEventListener('click', () => {
-        this.activateCirclePlacement(null);
+        if (this.stage.placementMode && this.selectedPresetIndex === null) {
+          this.deactivateCirclePlacement();
+        } else {
+          this.stage.clearSelection();
+          this.selectedPresetIndex = null;
+          this.activateCirclePlacement(null);
+          this.renderPredefinedCirclesUI();
+        }
       });
     }
 
@@ -263,10 +270,13 @@ class App {
     } else if (msg.type === 'STAGE_LIVE_UPDATE' || msg.type === 'MODIFIER_LIVE_UPDATE') {
       if (msg.sceneId === this.scenesController.activeSceneId) {
         if (!this.stage.dragTarget) {
+          const countChanged = (this.stage.circles.length !== msg.circles.length) || (this.stage.segments.length !== msg.segments.length);
           this.stage.segments = msg.segments.map(s => ({ ...s }));
           this.stage.circles = msg.circles.map(c => ({ ...c }));
-          this.renderMappingsTable();
-          this.renderCreatedCirclesUI();
+          if (countChanged) {
+            this.renderMappingsTable();
+            this.renderCreatedCirclesUI();
+          }
           if (msg.type === 'MODIFIER_LIVE_UPDATE' && msg.prop) {
             const selected = this.stage.getSelectedItems();
             if (selected.length > 0) {
@@ -477,6 +487,7 @@ class App {
 
       // Multi-select toggle
       badge.addEventListener('click', () => {
+        this.deactivateCirclePlacement();
         this.stage.toggleElementSelection(`circle-${c.id}`);
       });
 
@@ -490,13 +501,15 @@ class App {
 
     this.predefinedTemplates.forEach((preset, idx) => {
       const circleBtn = document.createElement('div');
-      circleBtn.className = `preset-circle-btn ${this.selectedPresetIndex === idx ? 'active' : ''}`;
+      const isSelected = (this.selectedPresetIndex === idx);
+      circleBtn.className = `preset-circle-btn ${isSelected ? 'active' : ''}`;
       circleBtn.dataset.index = idx;
 
-      circleBtn.style.backgroundColor = preset.fill || preset.color;
-      circleBtn.style.borderColor = '#00ff41';
+      // The colors of the predefined circles are the same as set in the parameters
+      circleBtn.style.backgroundColor = preset.color || '#0055ff';
 
-      circleBtn.addEventListener('click', () => {
+      circleBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
         this.selectPredefinedSlot(idx);
       });
 
@@ -505,33 +518,67 @@ class App {
   }
 
   selectPredefinedSlot(index) {
+    // Toggle off if already selected
+    if (this.selectedPresetIndex === index) {
+      this.deactivateCirclePlacement();
+      return;
+    }
+
     this.selectedPresetIndex = index;
     const preset = this.predefinedTemplates[index];
 
-    // Show its current parameters on the sliders
-    this.modifiers.setColorFromValue(this.modifiers.findValueFromHex(preset.color), false);
-    this.modifiers.setGlitchFromValue(preset.glitch, false);
-    this.modifiers.setSizeFromValue(preset.size, false);
+    // Clear any selection on the stage so sliders focus on this predefined circle
+    this.stage.clearSelection();
 
-    // Prepare placement mode
+    // Show its current saved parameters on the sliders
+    if (preset.color) {
+      this.modifiers.setColorFromValue(this.modifiers.findValueFromHex(preset.color), false);
+    }
+    if (preset.glitch !== undefined) {
+      this.modifiers.setGlitchFromValue(preset.glitch, false);
+    }
+    if (preset.size !== undefined) {
+      this.modifiers.setSizeFromValue(preset.size, false);
+    }
+
+    // Activate placement mode
     this.activateCirclePlacement(index);
     this.renderPredefinedCirclesUI();
   }
 
+  deactivateCirclePlacement() {
+    this.selectedPresetIndex = null;
+    if (this.stage) {
+      this.stage.placementMode = null;
+      if (this.stage.canvas) {
+        this.stage.canvas.style.cursor = 'default';
+      }
+    }
+    this.renderPredefinedCirclesUI();
+  }
+
   activateCirclePlacement(presetIndex) {
-    const template = presetIndex !== null ? this.predefinedTemplates[presetIndex] : {
-      color: this.modifiers.currentColor.hex,
-      glitch: this.modifiers.currentGlitch,
-      size: this.modifiers.currentSize
-    };
+    let color, glitch, size;
+    if (presetIndex !== null && this.predefinedTemplates[presetIndex]) {
+      const p = this.predefinedTemplates[presetIndex];
+      color = p.color || '#0055ff';
+      glitch = p.glitch !== undefined ? p.glitch : 0;
+      size = p.size !== undefined ? p.size : 60;
+    } else {
+      color = this.modifiers.currentColor.hex;
+      glitch = this.modifiers.currentGlitch;
+      size = this.modifiers.currentSize;
+    }
 
     this.stage.placementMode = {
       presetIndex: presetIndex,
-      color: template.color,
-      glitch: template.glitch,
-      size: template.size
+      color: color,
+      glitch: glitch,
+      size: size
     };
-    this.stage.canvas.style.cursor = 'crosshair';
+    if (this.stage.canvas) {
+      this.stage.canvas.style.cursor = 'crosshair';
+    }
   }
 
   completeCirclePlacement(x, y, placementData) {
@@ -547,11 +594,14 @@ class App {
     };
 
     this.stage.circles.push(newCircle);
-    this.stage.selectElement(`circle-${newCircle.id}`, false);
-    this.scenesController.markActiveSceneModified();
 
+    // Auto-deselect the predefined circle option and exit placement mode after placement
+    this.deactivateCirclePlacement();
+
+    this.scenesController.markActiveSceneModified();
     this.renderCreatedCirclesUI();
     this.syncStateToServer();
+    this.sendLiveStageUpdate();
   }
 
   /* -------------------------------------------------------------------------- */
@@ -568,18 +618,25 @@ class App {
   }
 
   applyModifierToSelected(prop, value) {
-    const selected = this.stage.getSelectedItems();
-
-    // If no elements are selected but a predefined template is selected, update that template!
-    if (selected.length === 0 && this.selectedPresetIndex !== null) {
+    // If a predefined template is selected, update that template!
+    if (this.selectedPresetIndex !== null) {
       const preset = this.predefinedTemplates[this.selectedPresetIndex];
-      preset[prop] = value;
-      if (prop === 'color') preset.fill = value;
-      this.renderPredefinedCirclesUI();
-      this.syncStateToServer();
+      if (preset) {
+        preset[prop] = value;
+        if (prop === 'color') {
+          preset.fill = value;
+        }
+        if (this.stage.placementMode) {
+          this.stage.placementMode[prop] = value;
+        }
+        // Immediately update button color and persist state
+        this.renderPredefinedCirclesUI();
+        this.syncStateToServer();
+      }
       return;
     }
 
+    const selected = this.stage.getSelectedItems();
     if (selected.length === 0) return;
 
     selected.forEach(item => {

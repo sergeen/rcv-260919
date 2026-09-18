@@ -143,5 +143,10 @@ class GlitchEngine {
   }
 }
 
-// Export for browser
-window.GlitchEngine = GlitchEngine;
+// Export for browser and Node.js
+if (typeof window !== 'undefined') {
+  window.GlitchEngine = GlitchEngine;
+}
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = GlitchEngine;
+}

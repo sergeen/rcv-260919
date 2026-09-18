@@ -229,14 +229,34 @@ class SerialManager extends EventEmitter {
     packet[5 + numBytes] = checksum;
 
     this.port.write(packet, (err) => {
-      this.isSending = false;
       if (err) {
+        this.isSending = false;
         console.error('[SerialManager] Write error:', err.message);
+        if (this.pendingFrame) {
+          const next = this.pendingFrame;
+          this.pendingFrame = null;
+          this._writeFramePacket(next);
+        }
+        return;
       }
-      if (this.pendingFrame) {
-        const next = this.pendingFrame;
-        this.pendingFrame = null;
-        this._writeFramePacket(next);
+
+      // Wait until physical transmission completes before sending next frame
+      if (typeof this.port.drain === 'function') {
+        this.port.drain(() => {
+          this.isSending = false;
+          if (this.pendingFrame) {
+            const next = this.pendingFrame;
+            this.pendingFrame = null;
+            this._writeFramePacket(next);
+          }
+        });
+      } else {
+        this.isSending = false;
+        if (this.pendingFrame) {
+          const next = this.pendingFrame;
+          this.pendingFrame = null;
+          this._writeFramePacket(next);
+        }
       }
     });
   }
