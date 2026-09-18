@@ -155,18 +155,23 @@
     },
     ">": {
       "isCustomized": true,
-      "segments": [],
-      "circles": [
+      "segments": [
         {
-          "id": "A",
-          "x": 250,
-          "y": 150,
-          "size": 70,
-          "color": "#ff0022",
-          "glitch": 0,
+          "id": "AB",
+          "p1": {
+            "x": 180,
+            "y": 150
+          },
+          "p2": {
+            "x": 675.9841220035254,
+            "y": 164.75451559396296
+          },
+          "startLed": 1,
+          "endLed": 40,
           "off": false
         }
-      ]
+      ],
+      "circles": []
     }
   },
   "predefinedCircles": [
@@ -199,5 +204,7 @@
       "fill": "transparent"
     }
   ],
-  "selectedElementIds": []
+  "selectedElementIds": [
+    "segment-AB"
+  ]
 }

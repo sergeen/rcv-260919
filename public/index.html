@@ -136,6 +136,32 @@
     </div>
   </div>
 
+  <!-- NUMERIC PROMPT MODAL (NO FULLSCREEN EXIT) -->
+  <div class="modal-overlay hidden" id="promptModal">
+    <div class="modal-box">
+      <h3 id="promptTitle">MODIFICAR VALOR</h3>
+      <p id="promptMessage">Introduce el nuevo valor:</p>
+      <div style="margin: 14px 0;">
+        <input type="number" id="promptInput" class="retro-input" min="1" max="999" pattern="[0-9]*" inputmode="numeric">
+      </div>
+      <div class="modal-actions">
+        <button class="btn-modal" id="promptCancelBtn">CANCELAR</button>
+        <button class="btn-modal" id="promptOkBtn">GUARDAR</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ALERT NOTICE MODAL (NO FULLSCREEN EXIT) -->
+  <div class="modal-overlay hidden" id="alertModal">
+    <div class="modal-box">
+      <h3 id="alertTitle">ATENCIÓN</h3>
+      <p id="alertMessage">Mensaje</p>
+      <div class="modal-actions">
+        <button class="btn-modal" id="alertOkBtn">ENTENDIDO</button>
+      </div>
+    </div>
+  </div>
+
   <!-- CONNECTION / WIFI MODAL -->
   <div class="modal-overlay hidden" id="connectionModal">
     <div class="modal-box">

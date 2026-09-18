@@ -681,6 +681,26 @@ html, body {
   color: #fff;
 }
 
+.retro-input {
+  width: 140px;
+  background: #000;
+  border: 1.5px solid var(--cyber-green);
+  color: var(--cyber-green);
+  font-family: var(--font-mono);
+  font-size: 20px;
+  font-weight: bold;
+  text-align: center;
+  padding: 8px 12px;
+  outline: none;
+  box-shadow: 0 0 10px rgba(0, 255, 65, 0.25);
+  border-radius: 0;
+}
+
+.retro-input:focus {
+  border-color: #ffffff;
+  box-shadow: 0 0 15px var(--cyber-green);
+}
+
 /* ------------------------------------------------------------------------------
    MOBILE RESPONSIVENESS (NO BLOCKING OVERLAYS, ADAPTS FREELY)
    ------------------------------------------------------------------------------ */

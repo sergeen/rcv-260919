@@ -114,6 +114,20 @@ class App {
     this.confirmYesBtn = document.getElementById('confirmYesBtn');
     this.confirmNoBtn = document.getElementById('confirmNoBtn');
 
+    // Prompt Modal (In-app, no fullscreen exit)
+    this.promptModal = document.getElementById('promptModal');
+    this.promptTitle = document.getElementById('promptTitle');
+    this.promptMessage = document.getElementById('promptMessage');
+    this.promptInput = document.getElementById('promptInput');
+    this.promptOkBtn = document.getElementById('promptOkBtn');
+    this.promptCancelBtn = document.getElementById('promptCancelBtn');
+
+    // Alert Notice Modal (In-app, no fullscreen exit)
+    this.alertModal = document.getElementById('alertModal');
+    this.alertTitle = document.getElementById('alertTitle');
+    this.alertMessage = document.getElementById('alertMessage');
+    this.alertOkBtn = document.getElementById('alertOkBtn');
+
     // Connection info modal
     this.connectionModal = document.getElementById('connectionModal');
     this.statusIndicator = document.getElementById('statusIndicator');
@@ -162,7 +176,7 @@ class App {
       this.btnDeleteElement.addEventListener('click', () => {
         const selected = this.stage.getSelectedItems();
         if (selected.length === 0) {
-          alert('Selecciona primero un elemento (círculo o segmento) para borrar.');
+          this.showAlert('Selecciona primero un elemento (círculo o segmento) para borrar.', 'SIN SELECCIÓN');
           return;
         }
         const names = selected.map(s => s.elementKind === 'circle' ? `Círculo ${s.id}` : `Segmento ${s.id}`).join(', ');
@@ -408,16 +422,23 @@ class App {
       // Single click selects/multi-selects
       row.addEventListener('click', (e) => {
         if (e.target.classList.contains('col-led')) {
-          // Edit LED index prompt
           const prop = e.target.dataset.prop;
           const current = seg[prop];
-          const val = prompt(`Modificar ${prop === 'startLed' ? 'LED inicial' : 'LED final'} para segmento ${seg.id}:`, current);
-          if (val !== null && !isNaN(parseInt(val, 10))) {
-            seg[prop] = Math.max(1, parseInt(val, 10));
-            this.scenesController.markActiveSceneModified();
-            this.renderMappingsTable();
-            this.syncStateToServer();
-          }
+          const label = prop === 'startLed' ? 'LED inicial' : 'LED final';
+          this.showPrompt(
+            `SEGMENTO ${seg.id}`,
+            `Modificar ${label}:`,
+            current,
+            (val) => {
+              const num = parseInt(val, 10);
+              if (!isNaN(num) && num > 0) {
+                seg[prop] = num;
+                this.scenesController.markActiveSceneModified();
+                this.renderMappingsTable();
+                this.syncStateToServer();
+              }
+            }
+          );
           return;
         }
         this.stage.toggleElementSelection(`segment-${seg.id}`);
@@ -593,7 +614,7 @@ class App {
   toggleSelectedElementsOff() {
     const selected = this.stage.getSelectedItems();
     if (selected.length === 0) {
-      alert('Selecciona primero un elemento para apagar o encender.');
+      this.showAlert('Selecciona primero un elemento para apagar o encender.', 'SIN SELECCIÓN');
       return;
     }
 
@@ -633,11 +654,70 @@ class App {
     }
   }
 
-  showConfirmModal(message, onConfirm) {
-    if (!this.confirmModal) {
-      if (confirm(message)) onConfirm();
-      return;
+  showAlert(message, title = 'ATENCIÓN') {
+    if (!this.alertModal) return;
+    if (this.alertTitle) this.alertTitle.textContent = title;
+    if (this.alertMessage) this.alertMessage.textContent = message;
+    this.alertModal.classList.remove('hidden');
+
+    const handleOk = () => {
+      this.alertModal.classList.add('hidden');
+      this.alertOkBtn.removeEventListener('click', handleOk);
+    };
+    this.alertOkBtn.addEventListener('click', handleOk);
+  }
+
+  showPrompt(title, message, defaultValue, onConfirm) {
+    if (!this.promptModal) return;
+    if (this.promptTitle) this.promptTitle.textContent = title;
+    if (this.promptMessage) this.promptMessage.textContent = message;
+    if (this.promptInput) {
+      this.promptInput.value = defaultValue;
     }
+    this.promptModal.classList.remove('hidden');
+    if (this.promptInput) {
+      setTimeout(() => {
+        this.promptInput.focus();
+        this.promptInput.select();
+      }, 50);
+    }
+
+    const cleanup = () => {
+      this.promptModal.classList.add('hidden');
+      this.promptOkBtn.removeEventListener('click', handleOk);
+      this.promptCancelBtn.removeEventListener('click', handleCancel);
+      this.promptInput.removeEventListener('keydown', handleKey);
+    };
+
+    const handleOk = () => {
+      const val = this.promptInput.value.trim();
+      cleanup();
+      if (val !== '' && onConfirm) {
+        onConfirm(val);
+      }
+    };
+
+    const handleCancel = () => {
+      cleanup();
+    };
+
+    const handleKey = (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleOk();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        handleCancel();
+      }
+    };
+
+    this.promptOkBtn.addEventListener('click', handleOk);
+    this.promptCancelBtn.addEventListener('click', handleCancel);
+    this.promptInput.addEventListener('keydown', handleKey);
+  }
+
+  showConfirmModal(message, onConfirm) {
+    if (!this.confirmModal) return;
     this.confirmMessage.textContent = message;
     this.confirmModal.classList.remove('hidden');
 
