@@ -4,6 +4,30 @@ A specialized mobile-optimized web interface and hardware bridge to control addr
 
 ---
 
+## Project Overview & Artistic Intentions
+
+*Requiem Cabaret Voltaire 2026* is a bespoke, real-time spatial lighting instrument and cybernetic controller designed for live theatrical and audiovisual art performance. It bridges mobile tactile gestures with physical WS2812B addressable LEDs driven by an ELEGOO Mega 2560 via high-speed USB serial.
+
+### 1. The Core Artistic Intent
+Traditional DMX lighting consoles isolate the operator behind complex cue stacks and channel faders. *Requiem Cabaret Voltaire* re-imagines light control as **direct spatial painting**:
+- **Segments as Physical Reality**: LED strips installed across the performance space are mirrored on the 2D stage canvas as flexible geometric segments with configurable physical LED index ranges (`startLed` .. `endLed`).
+- **Circles as Fields of Influence**: Rather than setting colors per channel, the artist places dynamic, draggable circles on the stage. Any physical LED entering a circle’s boundary instantly ignites with its color, size, and chaotic glitch traits. Intersecting circles blend additively, creating live optical interference patterns in real space.
+- **Zero-Latency Physicality**: When the performer drags a circle with their finger on a smartphone, the physical light moves across the room with zero perceptible lag (~40 FPS live streaming with hardware flow control).
+
+### 2. The Aesthetics of Noise & Disorientation
+Rooted in the Dadaist rebellion of Cabaret Voltaire (Zurich, 1916), the analog video magnetism of Nam June Paik, and the high-frequency algorithmic strobism of Ryoji Ikeda:
+- **3-Phase Glitch Engine**: Traverses from subtle analog voltage sag and tape dropouts (`■□□` / 1%–33%), to chromatic channel splitting and complementary bit-flips (`■■□` / 34%–66%), culminating in a blinding 45 Hz stroboscopic sensory overload (`■■■` / 67%–100%).
+- **Cyberpunk Visual System**: Monolithic pitch-black stage, 4px neon green boundary lines, pulsing crimson red for active selection, and distinct **amber-yellow indicators for muted/turned-off states**, avoiding any visual ambiguity in dark stage conditions.
+
+### 3. Performance Ergonomics & Stage Safety
+Live performance demands rapid setup and absolute stability:
+- **Customizable Predefined Templates (Fast Stamping)**: Four color/glitch/size presets allow swift parameter tuning and immediate placement onto the stage, auto-deselecting after each tap to avoid unintended drags.
+- **Segment Lock Shield (`LOCK`)**: A dedicated lock toggle immobilizes all physical LED segments—preventing accidental remapping, moving, or deletion while enabling the artist to freely play influence circles around them during a show.
+- **Immersive Full-Screen Modals**: Custom in-app dialogs replace native browser prompts to maintain full-screen lock on mobile devices without browser interruption.
+- **Authoritative Server Engine**: The computer directly computes geometric collisions and dispatches binary RGB frames to the Arduino, ensuring continuous animation and glitching even if the mobile device sleeps or changes Wi-Fi state.
+
+---
+
 ## System Architecture
 
 ```
