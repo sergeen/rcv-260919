@@ -24,6 +24,7 @@ class App {
       { index: 3, color: '#ffffff', glitch: 90, size: 70, fill: 'transparent' }
     ];
     this.selectedPresetIndex = null;
+    this.isSegmentsLocked = false;
 
     // Elements
     this.initDomReferences();
@@ -100,6 +101,8 @@ class App {
   initDomReferences() {
     this.mappingsListEl = document.getElementById('mappingsList');
     this.addMappingBtn = document.getElementById('addMappingBtn');
+    this.btnLockSegments = document.getElementById('btnLockSegments');
+    this.mappingsSection = document.querySelector('.mappings-section');
 
     this.createdCirclesListEl = document.getElementById('createdCirclesList');
     this.predefinedCirclesEl = document.getElementById('predefinedCircles');
@@ -162,6 +165,11 @@ class App {
     // Add mapping group button
     if (this.addMappingBtn) {
       this.addMappingBtn.addEventListener('click', () => this.addNewMappingGroup());
+    }
+
+    // Lock segments button
+    if (this.btnLockSegments) {
+      this.btnLockSegments.addEventListener('click', () => this.toggleSegmentsLock());
     }
 
     // Add circle default button (+)
@@ -287,6 +295,8 @@ class App {
       }
     } else if (msg.type === 'SCENE_CHANGED') {
       this.scenesController.selectScene(msg.sceneId);
+    } else if (msg.type === 'SEGMENTS_LOCK_UPDATE') {
+      this.toggleSegmentsLock(msg.isLocked);
     }
   }
 
@@ -330,12 +340,17 @@ class App {
       activeSceneId: scenesData.activeSceneId,
       scenes: scenesData.scenes,
       predefinedCircles: this.predefinedTemplates,
-      selectedElementIds: Array.from(this.stage.selectedIds)
+      selectedElementIds: Array.from(this.stage.selectedIds),
+      segmentsLocked: this.isSegmentsLocked
     };
   }
 
   applyFullState(state, updateSelection = true) {
     if (!state) return;
+
+    if (state.segmentsLocked !== undefined) {
+      this.toggleSegmentsLock(state.segmentsLocked);
+    }
 
     if (state.predefinedCircles && Array.isArray(state.predefinedCircles)) {
       this.predefinedTemplates = state.predefinedCircles;
@@ -374,6 +389,51 @@ class App {
   /* -------------------------------------------------------------------------- */
   /* MAPPING GROUPS (SEGMENTS)                                                  */
   /* -------------------------------------------------------------------------- */
+  toggleSegmentsLock(forceState = null) {
+    if (forceState !== null) {
+      this.isSegmentsLocked = !!forceState;
+    } else {
+      this.isSegmentsLocked = !this.isSegmentsLocked;
+    }
+
+    if (this.btnLockSegments) {
+      this.btnLockSegments.classList.toggle('active', this.isSegmentsLocked);
+      this.btnLockSegments.title = this.isSegmentsLocked
+        ? 'Segmentos bloqueados (click para desbloquear)'
+        : 'Bloquear edición de segmentos';
+    }
+
+    if (this.mappingsSection) {
+      this.mappingsSection.classList.toggle('is-locked', this.isSegmentsLocked);
+    }
+
+    if (this.addMappingBtn) {
+      this.addMappingBtn.disabled = this.isSegmentsLocked;
+    }
+
+    // When locked, deselect any currently selected segments
+    if (this.isSegmentsLocked) {
+      let changed = false;
+      this.stage.selectedIds.forEach(id => {
+        if (id.startsWith('segment-')) {
+          this.stage.selectedIds.delete(id);
+          changed = true;
+        }
+      });
+      if (changed) {
+        this.onSelectionChanged();
+      }
+    }
+
+    // Sync lock status across devices
+    if (this.ws && this.wsConnected && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify({
+        type: 'SEGMENTS_LOCK_UPDATE',
+        isLocked: this.isSegmentsLocked
+      }));
+    }
+  }
+
   getNextSegmentId() {
     const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     const count = this.stage.segments.length;
@@ -383,6 +443,8 @@ class App {
   }
 
   addNewMappingGroup() {
+    if (this.isSegmentsLocked) return;
+
     const id = this.getNextSegmentId();
 
     // Calculate start & end LED indices
@@ -429,8 +491,11 @@ class App {
         <div class="col-led col-end" data-prop="endLed">${seg.endLed}</div>
       `;
 
-      // Single click selects/multi-selects
+      // Single click selects/multi-selects (if not locked)
       row.addEventListener('click', (e) => {
+        if (this.isSegmentsLocked) return;
+        this.deactivateCirclePlacement();
+
         if (e.target.classList.contains('col-led')) {
           const prop = e.target.dataset.prop;
           const current = seg[prop];
@@ -440,6 +505,7 @@ class App {
             `Modificar ${label}:`,
             current,
             (val) => {
+              if (this.isSegmentsLocked) return;
               const num = parseInt(val, 10);
               if (!isNaN(num) && num > 0) {
                 seg[prop] = num;
@@ -643,7 +709,7 @@ class App {
       if (item.elementKind === 'circle') {
         const c = this.stage.circles.find(x => x.id === item.id);
         if (c) c[prop] = value;
-      } else if (item.elementKind === 'segment') {
+      } else if (item.elementKind === 'segment' && !this.isSegmentsLocked) {
         // Size only affects circles
         if (prop !== 'size') {
           const s = this.stage.segments.find(x => x.id === item.id);
@@ -659,13 +725,16 @@ class App {
   deleteSelectedElements() {
     const toDelete = new Set(this.stage.selectedIds);
     this.stage.circles = this.stage.circles.filter(c => !toDelete.has(`circle-${c.id}`));
-    this.stage.segments = this.stage.segments.filter(s => !toDelete.has(`segment-${s.id}`));
+    if (!this.isSegmentsLocked) {
+      this.stage.segments = this.stage.segments.filter(s => !toDelete.has(`segment-${s.id}`));
+    }
     this.stage.clearSelection();
 
     this.scenesController.markActiveSceneModified();
     this.renderMappingsTable();
     this.renderCreatedCirclesUI();
     this.syncStateToServer();
+    this.sendLiveStageUpdate();
   }
 
   toggleSelectedElementsOff() {
@@ -679,7 +748,7 @@ class App {
       if (item.elementKind === 'circle') {
         const c = this.stage.circles.find(x => x.id === item.id);
         if (c) c.off = !c.off;
-      } else if (item.elementKind === 'segment') {
+      } else if (item.elementKind === 'segment' && !this.isSegmentsLocked) {
         const s = this.stage.segments.find(x => x.id === item.id);
         if (s) s.off = !s.off;
       }
@@ -689,6 +758,7 @@ class App {
     this.renderMappingsTable();
     this.renderCreatedCirclesUI();
     this.syncStateToServer();
+    this.sendLiveStageUpdate();
   }
 
   toggleFullscreen() {

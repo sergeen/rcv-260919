@@ -77,18 +77,20 @@ class StageEngine {
     }
 
     // 1. Check segment endpoints (hit radius: 30px for touch)
-    for (const seg of this.segments) {
-      const d1 = Math.hypot(pos.x - seg.p1.x, pos.y - seg.p1.y);
-      if (d1 < 30) {
-        this.dragTarget = { type: 'handle', segment: seg, handle: 'p1', initial: { ...seg.p1 } };
-        this.selectElement(`segment-${seg.id}`, e.shiftKey || false);
-        return;
-      }
-      const d2 = Math.hypot(pos.x - seg.p2.x, pos.y - seg.p2.y);
-      if (d2 < 30) {
-        this.dragTarget = { type: 'handle', segment: seg, handle: 'p2', initial: { ...seg.p2 } };
-        this.selectElement(`segment-${seg.id}`, e.shiftKey || false);
-        return;
+    if (!this.app.isSegmentsLocked) {
+      for (const seg of this.segments) {
+        const d1 = Math.hypot(pos.x - seg.p1.x, pos.y - seg.p1.y);
+        if (d1 < 30) {
+          this.dragTarget = { type: 'handle', segment: seg, handle: 'p1', initial: { ...seg.p1 } };
+          this.selectElement(`segment-${seg.id}`, e.shiftKey || false);
+          return;
+        }
+        const d2 = Math.hypot(pos.x - seg.p2.x, pos.y - seg.p2.y);
+        if (d2 < 30) {
+          this.dragTarget = { type: 'handle', segment: seg, handle: 'p2', initial: { ...seg.p2 } };
+          this.selectElement(`segment-${seg.id}`, e.shiftKey || false);
+          return;
+        }
       }
     }
 
@@ -116,20 +118,22 @@ class StageEngine {
     }
 
     // 3. Check segment line bodies
-    for (const seg of this.segments) {
-      const dist = this.distToSegment(pos, seg.p1, seg.p2);
-      if (dist < 20) {
-        const id = `segment-${seg.id}`;
-        if (!this.selectedIds.has(id)) {
-          this.selectElement(id, false);
+    if (!this.app.isSegmentsLocked) {
+      for (const seg of this.segments) {
+        const dist = this.distToSegment(pos, seg.p1, seg.p2);
+        if (dist < 20) {
+          const id = `segment-${seg.id}`;
+          if (!this.selectedIds.has(id)) {
+            this.selectElement(id, false);
+          }
+          this.dragTarget = {
+            type: 'segment_body',
+            segment: seg,
+            startP1: { ...seg.p1 },
+            startP2: { ...seg.p2 }
+          };
+          return;
         }
-        this.dragTarget = {
-          type: 'segment_body',
-          segment: seg,
-          startP1: { ...seg.p1 },
-          startP2: { ...seg.p2 }
-        };
-        return;
       }
     }
 
@@ -379,19 +383,19 @@ class StageEngine {
     this.ctx.lineWidth = 2.5;
 
     if (isSelected) {
-      // Solid filled green handle
-      this.ctx.fillStyle = isOff ? '#552222' : '#00ff41';
+      // Solid filled handle (yellow if off, cyber green if on)
+      this.ctx.fillStyle = isOff ? '#cc9900' : '#00ff41';
       this.ctx.strokeStyle = '#000000';
-      this.ctx.shadowColor = '#00ff41';
+      this.ctx.shadowColor = isOff ? '#ffaa00' : '#00ff41';
       this.ctx.shadowBlur = 10;
       this.ctx.beginPath();
       this.ctx.arc(x, y, radius, 0, Math.PI * 2);
       this.ctx.fill();
       this.ctx.stroke();
     } else {
-      // Outlined hollow green handle
+      // Outlined hollow handle
       this.ctx.fillStyle = '#000000';
-      this.ctx.strokeStyle = isOff ? '#552222' : '#00ff41';
+      this.ctx.strokeStyle = isOff ? '#aa7700' : '#00ff41';
       this.ctx.beginPath();
       this.ctx.arc(x, y, radius, 0, Math.PI * 2);
       this.ctx.fill();
@@ -415,25 +419,25 @@ class StageEngine {
     if (isSelected) {
       this.ctx.setLineDash([]); // solid
       this.ctx.lineWidth = 3.5;
-      this.ctx.strokeStyle = isOff ? '#552222' : '#00ff41';
-      this.ctx.shadowColor = isOff ? '#330000' : '#00ff41';
+      this.ctx.strokeStyle = isOff ? '#ffaa00' : '#00ff41';
+      this.ctx.shadowColor = isOff ? '#aa7700' : '#00ff41';
       this.ctx.shadowBlur = 12;
     } else {
       this.ctx.setLineDash([5, 6]); // dotted
       this.ctx.lineWidth = 2.2;
-      this.ctx.strokeStyle = isOff ? '#331111' : '#00aa2b';
+      this.ctx.strokeStyle = isOff ? '#886600' : '#00aa2b';
     }
 
     this.ctx.beginPath();
     this.ctx.arc(c.x, c.y, r, 0, Math.PI * 2);
     this.ctx.stroke();
 
-    // Center letter identifier
+    // Center letter identifier (yellow if off, green if active)
     this.ctx.font = 'bold 20px "Courier New", Courier, monospace';
     this.ctx.textAlign = 'center';
     this.ctx.textBaseline = 'middle';
     this.ctx.fillStyle = isSelected ? '#00ff41' : '#00aa2b';
-    if (isOff) this.ctx.fillStyle = '#662222';
+    if (isOff) this.ctx.fillStyle = '#ffaa00';
     this.ctx.fillText(c.id, c.x, c.y);
 
     this.ctx.restore();

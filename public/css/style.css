@@ -400,6 +400,14 @@ html, body {
   color: var(--active-red);
 }
 
+.circle-badge.is-off {
+  border-color: #ffaa00 !important;
+}
+
+.circle-badge.is-off .badge-letter {
+  color: #ffaa00 !important;
+}
+
 .circle-badge .badge-off {
   position: absolute;
   bottom: -4px;
@@ -529,39 +537,104 @@ html, body {
 }
 
 .mapping-row.is-off {
-  color: #883333;
+  color: #aa8822;
 }
 
 .mapping-row.is-off .col-name {
-  color: var(--active-red);
+  color: #ffaa00;
 }
 
 .off-badge {
   font-size: 9px;
   padding: 1px 3px;
-  border: 1px solid var(--active-red);
-  color: var(--active-red);
+  border: 1px solid #ffaa00;
+  color: #ffaa00;
   margin-left: 4px;
 }
 
-.btn-add-mapping {
+.mappings-actions-bar {
+  display: flex;
   width: 100%;
   height: 28px;
+  border-top: 1px solid var(--border-green);
+  flex-shrink: 0;
+}
+
+.btn-add-mapping {
+  flex: 1;
+  height: 100%;
   background: transparent;
   border: none;
-  border-top: 1px solid var(--border-green);
+  border-right: 1px solid var(--border-green);
   color: var(--cyber-green);
   font-size: 18px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
+  transition: all 0.15s ease;
 }
 
 .btn-add-mapping:active {
   background: var(--cyber-green);
   color: #000;
+}
+
+.btn-add-mapping:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+  background: transparent;
+}
+
+.btn-lock-segments {
+  width: 38px;
+  height: 100%;
+  background: transparent;
+  border: none;
+  color: var(--cyber-green);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.btn-lock-segments:hover {
+  background: rgba(0, 255, 65, 0.1);
+}
+
+.btn-lock-segments .locked-icon {
+  display: none;
+}
+
+.btn-lock-segments .unlocked-icon {
+  display: block;
+}
+
+.btn-lock-segments.active {
+  background: rgba(255, 170, 0, 0.18);
+  color: #ffaa00;
+  border-left: 1px solid rgba(255, 170, 0, 0.5);
+}
+
+.btn-lock-segments.active .locked-icon {
+  display: block;
+}
+
+.btn-lock-segments.active .unlocked-icon {
+  display: none;
+}
+
+.mappings-section.is-locked {
+  border-color: rgba(255, 170, 0, 0.6);
+}
+
+.mappings-section.is-locked .mappings-header {
+  border-bottom-color: rgba(255, 170, 0, 0.4);
+}
+
+.mappings-section.is-locked .mapping-row {
+  cursor: default;
 }
 
 /* ------------------------------------------------------------------------------

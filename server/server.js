@@ -36,7 +36,8 @@ function loadState() {
         '~': { isCustomized: true, segments: [], circles: [] }
       },
       predefinedCircles: [],
-      selectedElementIds: []
+      selectedElementIds: [],
+      segmentsLocked: false
     };
   }
 }
@@ -184,6 +185,10 @@ wss.on('connection', (ws) => {
         saveState();
         ledEngine.triggerLiveUpdate();
         broadcast({ type: 'SCENE_CHANGED', sceneId: data.sceneId }, ws);
+      } else if (data.type === 'SEGMENTS_LOCK_UPDATE') {
+        appState.segmentsLocked = !!data.isLocked;
+        saveState();
+        broadcast({ type: 'SEGMENTS_LOCK_UPDATE', isLocked: appState.segmentsLocked }, ws);
       } else if (data.type === 'PING') {
         ws.send(JSON.stringify({ type: 'PONG', time: Date.now() }));
       }
