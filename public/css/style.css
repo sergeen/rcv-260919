@@ -379,17 +379,36 @@ html, body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
   background: transparent;
   flex-shrink: 0;
   position: relative;
   transition: all 0.15s ease;
 }
 
+.circle-badge:active {
+  cursor: grabbing;
+}
+
+.circle-badge.is-dragging {
+  opacity: 0.35;
+  transform: scale(0.85);
+  border-style: dashed;
+}
+
+.circle-badge.drag-over {
+  border-color: #ffffff !important;
+  box-shadow: 0 0 12px #ffffff, inset 0 0 6px rgba(255, 255, 255, 0.4);
+  transform: scale(1.15);
+}
+
 .circle-badge .badge-letter {
   font-size: 13px; /* 20% smaller: 16px -> 13px */
   font-weight: bold;
   color: var(--cyber-green);
+  pointer-events: none;
 }
 
 .circle-badge.active {

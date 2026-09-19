@@ -101,7 +101,6 @@ class StageEngine {
       const d = Math.hypot(pos.x - c.x, pos.y - c.y);
       if (d <= r) {
         const id = `circle-${c.id}`;
-        this.bringCircleToFront(id);
         if (!this.selectedIds.has(id)) {
           // Select this circle
           this.selectElement(id, false);
@@ -220,9 +219,6 @@ class StageEngine {
   }
 
   selectElement(id, multi = false) {
-    if (id.startsWith('circle-')) {
-      this.bringCircleToFront(id);
-    }
     if (!multi) {
       if (this.selectedIds.has(id)) {
         // Toggle off if single clicked again
@@ -246,9 +242,6 @@ class StageEngine {
       this.selectedIds.delete(id);
     } else {
       this.selectedIds.add(id);
-      if (id.startsWith('circle-')) {
-        this.bringCircleToFront(id);
-      }
     }
     this.app.onSelectionChanged();
   }

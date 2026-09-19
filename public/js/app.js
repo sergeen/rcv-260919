@@ -581,24 +581,125 @@ class App {
     return `C${this.stage.circles.length + 1}`;
   }
 
+  reorderCircle(fromIndex, toIndex) {
+    if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0) return;
+    if (fromIndex >= this.stage.circles.length || toIndex >= this.stage.circles.length) return;
+
+    const [moved] = this.stage.circles.splice(fromIndex, 1);
+    this.stage.circles.splice(toIndex, 0, moved);
+
+    this.renderCreatedCirclesUI();
+    this.syncStateToServer();
+  }
+
   renderCreatedCirclesUI() {
     if (!this.createdCirclesListEl) return;
     this.createdCirclesListEl.innerHTML = '';
 
-    const sortedCircles = [...this.stage.circles].sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
-    sortedCircles.forEach(c => {
+    // Circle order in list defines layer z-order:
+    // Left (index 0) = bottom layer, Right (index length-1) = top layer.
+    this.stage.circles.forEach((c, idx) => {
       const isSelected = this.stage.selectedIds.has(`circle-${c.id}`);
       const badge = document.createElement('div');
       badge.className = `circle-badge ${isSelected ? 'active blink-fade' : ''} ${c.off ? 'is-off' : ''}`;
       badge.dataset.id = c.id;
+      badge.dataset.index = idx;
+      badge.draggable = true;
+      badge.title = `Círculo ${c.id} (Arrastra para reordenar capas)`;
 
       badge.innerHTML = `
         <span class="badge-letter">${c.id}</span>
         ${c.off ? '<span class="badge-off blink-fade">OFF</span>' : ''}
       `;
 
-      // Multi-select toggle
+      // 1. Desktop HTML5 Drag & Drop
+      badge.addEventListener('dragstart', (e) => {
+        e.dataTransfer.setData('text/plain', String(idx));
+        e.dataTransfer.effectAllowed = 'move';
+        badge.classList.add('is-dragging');
+      });
+
+      badge.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        badge.classList.add('drag-over');
+      });
+
+      badge.addEventListener('dragleave', () => {
+        badge.classList.remove('drag-over');
+      });
+
+      badge.addEventListener('drop', (e) => {
+        e.preventDefault();
+        badge.classList.remove('drag-over');
+        const fromIdx = parseInt(e.dataTransfer.getData('text/plain'), 10);
+        if (!isNaN(fromIdx)) {
+          this.reorderCircle(fromIdx, idx);
+        }
+      });
+
+      badge.addEventListener('dragend', () => {
+        document.querySelectorAll('.circle-badge').forEach(b => {
+          b.classList.remove('is-dragging', 'drag-over');
+        });
+      });
+
+      // 2. Mobile Touch Drag Reorder Support
+      let touchStartX = 0;
+      let touchStartY = 0;
+      let isTouchDragging = false;
+      let currentHoveredBadge = null;
+
+      badge.addEventListener('touchstart', (e) => {
+        if (e.touches.length !== 1) return;
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+        isTouchDragging = false;
+      }, { passive: true });
+
+      badge.addEventListener('touchmove', (e) => {
+        if (e.touches.length !== 1) return;
+        const dx = e.touches[0].clientX - touchStartX;
+        const dy = e.touches[0].clientY - touchStartY;
+
+        if (Math.abs(dx) > 10 || isTouchDragging) {
+          isTouchDragging = true;
+          badge.classList.add('is-dragging');
+
+          const elem = document.elementFromPoint(e.touches[0].clientX, e.touches[0].clientY);
+          const targetBadge = elem ? elem.closest('.circle-badge') : null;
+
+          if (currentHoveredBadge && currentHoveredBadge !== targetBadge) {
+            currentHoveredBadge.classList.remove('drag-over');
+          }
+          if (targetBadge && targetBadge !== badge) {
+            targetBadge.classList.add('drag-over');
+            currentHoveredBadge = targetBadge;
+          } else {
+            currentHoveredBadge = null;
+          }
+        }
+      }, { passive: true });
+
+      badge.addEventListener('touchend', () => {
+        badge.classList.remove('is-dragging');
+        if (currentHoveredBadge) {
+          currentHoveredBadge.classList.remove('drag-over');
+          const toIdx = parseInt(currentHoveredBadge.dataset.index, 10);
+          if (!isNaN(toIdx) && toIdx !== idx) {
+            this.reorderCircle(idx, toIdx);
+            return;
+          }
+        }
+        if (!isTouchDragging) {
+          this.deactivateCirclePlacement();
+          this.stage.toggleElementSelection(`circle-${c.id}`);
+        }
+      });
+
+      // 3. Desktop Click (when not dragging)
       badge.addEventListener('click', () => {
+        if (badge.classList.contains('is-dragging')) return;
         this.deactivateCirclePlacement();
         this.stage.toggleElementSelection(`circle-${c.id}`);
       });

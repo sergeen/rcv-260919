@@ -181,7 +181,7 @@ class ModifiersController {
   }
 
   setSizeFromValue(val, propagate = true) {
-    this.currentSize = Math.max(10, Math.min(200, val));
+    this.currentSize = Math.max(10, Math.min(600, val));
 
     if (this.sizeValueLabel) {
       this.sizeValueLabel.textContent = `${this.currentSize}%`;
