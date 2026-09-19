@@ -12,7 +12,7 @@ const DATA_FILE = path.join(__dirname, '..', 'data', 'scenes_state.json');
 
 // Initialize Serial Manager
 const serialManager = new SerialManager({
-  baudRate: 115200,
+  baudRate: 250000,
   autoConnect: true
 });
 
@@ -128,26 +128,62 @@ wss.on('connection', (ws) => {
     wifiIp: getLocalIpAddress()
   }));
 
+  // Throttle tracking for drag broadcast to secondary clients
+  let lastDragBroadcast = 0;
+
   ws.on('message', (message, isBinary) => {
     if (isBinary) {
-      // Direct binary LED RGB frame from client canvas engine
-      // Forward directly to serial port
-      serialManager.sendLedFrame(message);
+      // Binary frames from client are no longer accepted; server LedEngine is the sole frame producer
       return;
     }
 
     try {
       const data = JSON.parse(message.toString());
 
-      if (data.type === 'FRAME_ARRAY') {
-        // RGB array [r, g, b, r, g, b...]
-        const buf = Buffer.from(data.frame);
-        serialManager.sendLedFrame(buf);
-      } else if (data.type === 'SYNC_STATE') {
+      if (data.type === 'SYNC_STATE') {
         appState = data.state;
         debouncedSaveState(300);
         ledEngine.triggerLiveUpdate();
         broadcast({ type: 'STATE_UPDATE', state: appState }, ws);
+      } else if (data.type === 'DRAG_UPDATE') {
+        // Lightweight delta: only update moved circles' x,y positions
+        if (appState.scenes && appState.scenes[data.sceneId]) {
+          const scene = appState.scenes[data.sceneId];
+          scene.isCustomized = true;
+          for (const upd of data.circles) {
+            const target = scene.circles.find(c => c.id === upd.id);
+            if (target) {
+              target.x = upd.x;
+              target.y = upd.y;
+            }
+          }
+        }
+        debouncedSaveState(600);
+        ledEngine.triggerLiveUpdate();
+        // Throttled broadcast to secondary clients (~20 FPS max)
+        const now = Date.now();
+        if (now - lastDragBroadcast > 50) {
+          lastDragBroadcast = now;
+          broadcast({ type: 'DRAG_UPDATE', sceneId: data.sceneId, circles: data.circles }, ws);
+        }
+      } else if (data.type === 'SEGMENT_DRAG_UPDATE') {
+        // Lightweight delta: only update moved segment's endpoints
+        if (appState.scenes && appState.scenes[data.sceneId]) {
+          const scene = appState.scenes[data.sceneId];
+          scene.isCustomized = true;
+          const seg = scene.segments.find(s => s.id === data.segId);
+          if (seg) {
+            seg.p1 = data.p1;
+            seg.p2 = data.p2;
+          }
+        }
+        debouncedSaveState(600);
+        ledEngine.triggerLiveUpdate();
+        const now = Date.now();
+        if (now - lastDragBroadcast > 50) {
+          lastDragBroadcast = now;
+          broadcast({ type: 'SEGMENT_DRAG_UPDATE', sceneId: data.sceneId, segId: data.segId, p1: data.p1, p2: data.p2 }, ws);
+        }
       } else if (data.type === 'STAGE_LIVE_UPDATE') {
         if (appState.scenes && appState.scenes[data.sceneId]) {
           appState.scenes[data.sceneId].isCustomized = true;

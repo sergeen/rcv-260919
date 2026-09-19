@@ -11,7 +11,7 @@ try {
 class SerialManager extends EventEmitter {
   constructor(options = {}) {
     super();
-    this.baudRate = options.baudRate || 115200;
+    this.baudRate = options.baudRate || 250000;
     this.autoConnect = options.autoConnect !== false;
     this.port = null;
     this.portPath = options.portPath || null;

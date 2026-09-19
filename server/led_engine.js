@@ -14,42 +14,76 @@ class LedEngine {
     this.getStateFn = getStateFn;
     this.glitchEngine = new GlitchEngine();
 
-    this.isRunning = false;
-    this.fps = 30;
-    this.interval = null;
+    this.glitchInterval = null;
     this.lastRenderTime = 0;
+    this.hasActiveGlitch = false;
 
-    this.start();
+    // Check for active glitch circles periodically and start/stop the continuous timer
+    this._checkGlitchState();
   }
 
-  start() {
-    if (this.isRunning) return;
-    this.isRunning = true;
-    const intervalMs = Math.round(1000 / this.fps); // ~33ms for 30 FPS
-
-    this.interval = setInterval(() => {
+  /**
+   * Start continuous rendering at 30 FPS (only when glitch effects are active).
+   */
+  _startGlitchTimer() {
+    if (this.glitchInterval) return;
+    const intervalMs = Math.round(1000 / 30); // ~33ms for 30 FPS
+    this.glitchInterval = setInterval(() => {
       this.glitchEngine.update();
       this.renderFrame();
     }, intervalMs);
   }
 
-  stop() {
-    if (this.interval) {
-      clearInterval(this.interval);
-      this.interval = null;
+  _stopGlitchTimer() {
+    if (this.glitchInterval) {
+      clearInterval(this.glitchInterval);
+      this.glitchInterval = null;
     }
-    this.isRunning = false;
   }
 
   /**
-   * Immediate render trigger (called on live drag / slider updates)
+   * Evaluate whether any active circles have glitch > 0 and start/stop the timer accordingly.
+   * Called after every state change.
+   */
+  _checkGlitchState() {
+    const state = this.getStateFn();
+    if (!state || !state.scenes) {
+      this._stopGlitchTimer();
+      this.hasActiveGlitch = false;
+      return;
+    }
+
+    const activeSceneId = state.activeSceneId || '~';
+    const scene = state.scenes[activeSceneId];
+    if (!scene || !scene.circles) {
+      this._stopGlitchTimer();
+      this.hasActiveGlitch = false;
+      return;
+    }
+
+    const hasGlitch = scene.circles.some(c => !c.off && c.glitch > 0);
+
+    if (hasGlitch && !this.hasActiveGlitch) {
+      this.hasActiveGlitch = true;
+      this._startGlitchTimer();
+    } else if (!hasGlitch && this.hasActiveGlitch) {
+      this.hasActiveGlitch = false;
+      this._stopGlitchTimer();
+    }
+  }
+
+  /**
+   * Immediate render trigger (called on live drag / slider updates).
+   * Always renders a frame and re-evaluates whether glitch timer is needed.
    */
   triggerLiveUpdate() {
     const now = Date.now();
-    // Allow high responsiveness during active dragging (min 20ms between frames)
-    if (now - this.lastRenderTime >= 20) {
+    // Allow high responsiveness during active dragging (min 16ms between frames)
+    if (now - this.lastRenderTime >= 16) {
+      this.glitchEngine.update();
       this.renderFrame();
     }
+    this._checkGlitchState();
   }
 
   renderFrame() {
@@ -75,7 +109,25 @@ class LedEngine {
 
     // Allocate RGB buffer (3 bytes per physical LED)
     const buffer = Buffer.alloc(maxLed * 3);
-    const activeCircles = (scene.circles || []).filter(c => !c.off);
+
+    // Pre-parse active circle colors once per frame (avoid hex parsing in hot loop)
+    const activeCircles = (scene.circles || []).filter(c => !c.off).map(c => {
+      const hex = c.color || '#0055ff';
+      const seed = (c.id && c.id.charCodeAt(0)) || 65;
+      const glitch = c.glitch || 0;
+      const baseR = (c.size / 100) * 110;
+      const jitter = this.glitchEngine ? this.glitchEngine.getCircleRadiusJitter(glitch, seed) : 0;
+      return {
+        x: c.x,
+        y: c.y,
+        radius: Math.max(10, baseR + jitter),
+        cr: parseInt(hex.slice(1, 3), 16) || 0,
+        cg: parseInt(hex.slice(3, 5), 16) || 0,
+        cb: parseInt(hex.slice(5, 7), 16) || 0,
+        glitch: glitch,
+        seed: seed
+      };
+    });
 
     // Render each segment
     for (const seg of scene.segments) {
@@ -93,43 +145,36 @@ class LedEngine {
         const lx = (seg.p1 ? seg.p1.x : 0) + t * dx;
         const ly = (seg.p1 ? seg.p1.y : 0) + t * dy;
 
-        let blendedR = 0;
-        let blendedG = 0;
-        let blendedB = 0;
+        let r = 0;
+        let g = 0;
+        let b = 0;
 
-        // Test collision with active circles
-        for (const c of activeCircles) {
-          const r = (c.size / 100) * 110;
-          const dist = Math.hypot(lx - c.x, ly - c.y);
+        // Test collision with active circles from top to bottom in z-order (highest index is on top).
+        // When circles overlap, they do not mix; the circle on top determines the color.
+        for (let j = activeCircles.length - 1; j >= 0; j--) {
+          const ac = activeCircles[j];
+          const dist = Math.hypot(lx - ac.x, ly - ac.y);
 
-          if (dist <= r) {
-            // Parse circle hex color
-            const hex = c.color || '#0055ff';
-            const cr = parseInt(hex.slice(1, 3), 16) || 0;
-            const cg = parseInt(hex.slice(3, 5), 16) || 0;
-            const cb = parseInt(hex.slice(5, 7), 16) || 0;
-
-            const circleSeed = (c.id && c.id.charCodeAt(0)) || 65;
-
-            // Apply glitch transformation
+          if (dist <= ac.radius) {
+            // Apply glitch transformation for the top circle
             const glitched = this.glitchEngine.processLed(
-              { r: cr, g: cg, b: cb },
-              c.glitch || 0,
+              { r: ac.cr, g: ac.cg, b: ac.cb },
+              ac.glitch,
               physicalIdx + 1,
-              circleSeed
+              ac.seed
             );
 
-            // Additive blending clamped to 255
-            blendedR = Math.min(255, blendedR + glitched.r);
-            blendedG = Math.min(255, blendedG + glitched.g);
-            blendedB = Math.min(255, blendedB + glitched.b);
+            r = glitched.r;
+            g = glitched.g;
+            b = glitched.b;
+            break; // Top circle determines the color; stop checking underlying circles
           }
         }
 
         const byteOffset = physicalIdx * 3;
-        buffer[byteOffset] = blendedR;
-        buffer[byteOffset + 1] = blendedG;
-        buffer[byteOffset + 2] = blendedB;
+        buffer[byteOffset] = r;
+        buffer[byteOffset + 1] = g;
+        buffer[byteOffset + 2] = b;
       }
     }
 

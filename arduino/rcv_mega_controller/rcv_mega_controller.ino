@@ -16,7 +16,7 @@
 #define LED_TYPE        WS2812B // WS2812B chipset
 #define COLOR_ORDER     GRB     // Most WS2812B strips use GRB order
 #define MAX_LEDS        300     // Maximum supported LEDs (Mega 2560 has 8KB RAM)
-#define SERIAL_BAUD     115200  // High-speed USB serial baud rate
+#define SERIAL_BAUD     250000  // High-speed USB serial baud rate (matches Node.js server)
 
 CRGB leds[MAX_LEDS];
 uint16_t activeLedCount = 80;
@@ -78,8 +78,8 @@ void setup() {
 }
 
 void loop() {
-  // Timeout protection: reset parser if stream stalls for > 60ms
-  if (currentState != STATE_WAIT_SYNC1 && (millis() - lastByteTime > 60)) {
+  // Timeout protection: reset parser if stream stalls for > 30ms (tighter at 250000 baud)
+  if (currentState != STATE_WAIT_SYNC1 && (millis() - lastByteTime > 30)) {
     currentState = STATE_WAIT_SYNC1;
   }
 

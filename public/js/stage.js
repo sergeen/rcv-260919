@@ -101,6 +101,7 @@ class StageEngine {
       const d = Math.hypot(pos.x - c.x, pos.y - c.y);
       if (d <= r) {
         const id = `circle-${c.id}`;
+        this.bringCircleToFront(id);
         if (!this.selectedIds.has(id)) {
           // Select this circle
           this.selectElement(id, false);
@@ -180,7 +181,13 @@ class StageEngine {
     const now = performance.now();
     if (now - this.lastLiveSyncTime > 25) { // ~40 FPS
       this.lastLiveSyncTime = now;
-      this.app.sendLiveStageUpdate();
+      if (this.dragTarget.type === 'circle') {
+        this.app.sendDragUpdate(this.dragTarget.elements);
+      } else if (this.dragTarget.type === 'handle') {
+        this.app.sendSegmentDragUpdate(this.dragTarget.segment.id, this.dragTarget.segment.p1, this.dragTarget.segment.p2);
+      } else if (this.dragTarget.type === 'segment_body') {
+        this.app.sendSegmentDragUpdate(this.dragTarget.segment.id, this.dragTarget.segment.p1, this.dragTarget.segment.p2);
+      }
     }
   }
 
@@ -201,7 +208,21 @@ class StageEngine {
     return Math.hypot(p.x - (v.x + t * (w.x - v.x)), p.y - (v.y + t * (w.y - v.y)));
   }
 
+  bringCircleToFront(id) {
+    const cid = id.startsWith('circle-') ? id.replace('circle-', '') : id;
+    const idx = this.circles.findIndex(c => c.id === cid);
+    if (idx !== -1 && idx !== this.circles.length - 1) {
+      const [circle] = this.circles.splice(idx, 1);
+      this.circles.push(circle);
+      this.app.scenesController.markActiveSceneModified();
+      this.app.syncStateToServer();
+    }
+  }
+
   selectElement(id, multi = false) {
+    if (id.startsWith('circle-')) {
+      this.bringCircleToFront(id);
+    }
     if (!multi) {
       if (this.selectedIds.has(id)) {
         // Toggle off if single clicked again
@@ -225,6 +246,9 @@ class StageEngine {
       this.selectedIds.delete(id);
     } else {
       this.selectedIds.add(id);
+      if (id.startsWith('circle-')) {
+        this.bringCircleToFront(id);
+      }
     }
     this.app.onSelectionChanged();
   }
@@ -251,26 +275,12 @@ class StageEngine {
   }
 
   /**
-   * Main render & calculation loop (60 FPS canvas preview, 30 FPS LED frame streamer)
+   * Main render loop (60 FPS canvas preview). LED frames are produced server-side only.
    */
   startLoop() {
-    let lastStreamTime = 0;
-
-    const render = (time) => {
+    const render = () => {
       this.glitchEngine.update();
       this.draw();
-
-      // Stream LED frames at ~30-35 FPS
-      if (time - lastStreamTime >= 28) {
-        lastStreamTime = time;
-        if (this.app && this.app.shouldStreamFrames()) {
-          const frameData = this.calculateLedFrame();
-          if (frameData) {
-            this.app.sendLedFrame(frameData);
-          }
-        }
-      }
-
       requestAnimationFrame(render);
     };
 
@@ -298,9 +308,28 @@ class StageEngine {
     const scaleY = ch / this.height;
     this.ctx.scale(scaleX, scaleY);
 
+    // Pre-parse active circles' colors once per frame (avoid hex parsing in hot loop)
+    const parsedCircles = this.circles.filter(c => !c.off).map(c => {
+      const hex = c.color || '#0055ff';
+      const seed = c.id ? c.id.charCodeAt(0) : 65;
+      const glitch = c.glitch || 0;
+      const baseR = (c.size / 100) * 110;
+      const jitter = this.glitchEngine ? this.glitchEngine.getCircleRadiusJitter(glitch, seed) : 0;
+      return {
+        x: c.x,
+        y: c.y,
+        radius: Math.max(10, baseR + jitter),
+        cr: parseInt(hex.slice(1, 3), 16) || 0,
+        cg: parseInt(hex.slice(3, 5), 16) || 0,
+        cb: parseInt(hex.slice(5, 7), 16) || 0,
+        glitch: glitch,
+        seed: seed
+      };
+    });
+
     // 1. Draw Segments (LED lines)
     for (const seg of this.segments) {
-      this.drawSegment(seg);
+      this.drawSegment(seg, parsedCircles);
     }
 
     // 2. Draw Circles
@@ -323,7 +352,7 @@ class StageEngine {
     this.ctx.restore();
   }
 
-  drawSegment(seg) {
+  drawSegment(seg, parsedCircles) {
     const isSelected = this.selectedIds.has(`segment-${seg.id}`);
     const isOff = seg.off === true;
 
@@ -350,7 +379,7 @@ class StageEngine {
       const ledIdx = seg.startLed + i;
 
       // Check circle collisions for this LED point
-      const activeColor = this.getLedColorAtPoint(lx, ly, ledIdx, isOff);
+      const activeColor = this.getLedColorAtPoint(lx, ly, ledIdx, isOff, parsedCircles);
 
       this.ctx.save();
       if (activeColor.lit) {
@@ -444,93 +473,47 @@ class StageEngine {
   }
 
   /**
-   * Determine LED color at position (lx, ly)
+   * Determine LED color at position (lx, ly).
+   * Accepts pre-parsed activeCircles array with cached {r, g, b} to avoid
+   * re-parsing hex colors on every LED×circle collision.
    */
-  getLedColorAtPoint(lx, ly, ledIndex, segmentIsOff) {
+  getLedColorAtPoint(lx, ly, ledIndex, segmentIsOff, parsedCircles) {
     if (segmentIsOff) {
       return { lit: false, r: 0, g: 0, b: 0 };
     }
 
-    let blendedR = 0;
-    let blendedG = 0;
-    let blendedB = 0;
-    let isLit = false;
+    // Test active circles from top to bottom in z-order (highest index is on top).
+    // When circles overlap, they do not mix; the circle on top determines the color.
+    for (let i = parsedCircles.length - 1; i >= 0; i--) {
+      const pc = parsedCircles[i];
+      const d = Math.hypot(lx - pc.x, ly - pc.y);
 
-    // Test each active circle
-    for (const c of this.circles) {
-      if (c.off) continue;
-      const r = (c.size / 100) * 110;
-      const d = Math.hypot(lx - c.x, ly - c.y);
-
-      if (d <= r) {
-        isLit = true;
-        // Parse circle's base RGB
-        const hex = c.color || '#0055ff';
-        const cr = parseInt(hex.slice(1, 3), 16) || 0;
-        const cg = parseInt(hex.slice(3, 5), 16) || 0;
-        const cb = parseInt(hex.slice(5, 7), 16) || 0;
-
-        // Run through glitch engine
+      if (d <= pc.radius) {
+        // Run through glitch engine for the top circle
         const glitched = this.glitchEngine.processLed(
-          { r: cr, g: cg, b: cb },
-          c.glitch || 0,
+          { r: pc.cr, g: pc.cg, b: pc.cb },
+          pc.glitch || 0,
           ledIndex,
-          c.id.charCodeAt(0)
+          pc.seed
         );
 
-        // Additive blending across multiple intersecting circles
-        blendedR = Math.min(255, blendedR + glitched.r);
-        blendedG = Math.min(255, blendedG + glitched.g);
-        blendedB = Math.min(255, blendedB + glitched.b);
+        return {
+          lit: true,
+          r: glitched.r,
+          g: glitched.g,
+          b: glitched.b
+        };
       }
     }
 
     return {
-      lit: isLit,
-      r: blendedR,
-      g: blendedG,
-      b: blendedB
+      lit: false,
+      r: 0,
+      g: 0,
+      b: 0
     };
   }
 
-  /**
-   * Calculate full RGB buffer for the physical WS2812B strip
-   * Output: Uint8Array containing [r0, g0, b0, r1, g1, b1...]
-   */
-  calculateLedFrame() {
-    let maxLed = 0;
-    for (const seg of this.segments) {
-      if (seg.endLed > maxLed) maxLed = seg.endLed;
-    }
-    if (maxLed <= 0) return null;
-
-    const buffer = new Uint8Array(maxLed * 3);
-
-    for (const seg of this.segments) {
-      const isOff = seg.off === true;
-      const count = Math.max(1, (seg.endLed - seg.startLed) + 1);
-      const dx = seg.p2.x - seg.p1.x;
-      const dy = seg.p2.y - seg.p1.y;
-
-      for (let i = 0; i < count; i++) {
-        const physicalIdx = seg.startLed + i - 1; // 0-indexed for buffer
-        if (physicalIdx < 0 || physicalIdx >= maxLed) continue;
-
-        const t = count === 1 ? 0 : i / (count - 1);
-        const lx = seg.p1.x + t * dx;
-        const ly = seg.p1.y + t * dy;
-
-        const col = this.getLedColorAtPoint(lx, ly, physicalIdx + 1, isOff);
-
-        const byteOffset = physicalIdx * 3;
-        buffer[byteOffset] = col.r;
-        buffer[byteOffset + 1] = col.g;
-        buffer[byteOffset + 2] = col.b;
-      }
-    }
-
-    return buffer;
-  }
 }
 
 window.StageEngine = StageEngine;

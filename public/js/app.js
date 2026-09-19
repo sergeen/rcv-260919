@@ -43,16 +43,6 @@ class App {
     this.lastInteractionTime = Date.now();
   }
 
-  shouldStreamFrames() {
-    // Stream frames if dragging, interacting recently, or glitch is active
-    if (this.stage && this.stage.dragTarget) return true;
-    if (Date.now() - this.lastInteractionTime < 4000) return true;
-    if (this.stage && this.stage.circles) {
-      return this.stage.circles.some(c => !c.off && c.glitch > 0);
-    }
-    return false;
-  }
-
   sendLiveStageUpdate() {
     this.markUserInteracted();
     if (this.ws && this.wsConnected && this.ws.readyState === WebSocket.OPEN) {
@@ -75,6 +65,37 @@ class App {
         circles: this.stage.circles,
         prop: prop,
         value: value
+      }));
+    }
+  }
+
+  /**
+   * Lightweight delta update: send only the moved circle's position during drag.
+   * ~80 bytes vs 2-4KB for a full STAGE_LIVE_UPDATE.
+   */
+  sendDragUpdate(elements) {
+    this.markUserInteracted();
+    if (this.ws && this.wsConnected && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify({
+        type: 'DRAG_UPDATE',
+        sceneId: this.scenesController.activeSceneId,
+        circles: elements.map(e => ({ id: e.circle.id, x: e.circle.x, y: e.circle.y }))
+      }));
+    }
+  }
+
+  /**
+   * Lightweight delta update for segment drag: send only the moved segment's endpoints.
+   */
+  sendSegmentDragUpdate(segId, p1, p2) {
+    this.markUserInteracted();
+    if (this.ws && this.wsConnected && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify({
+        type: 'SEGMENT_DRAG_UPDATE',
+        sceneId: this.scenesController.activeSceneId,
+        segId: segId,
+        p1: p1,
+        p2: p2
       }));
     }
   }
@@ -232,15 +253,24 @@ class App {
     this.ws = new WebSocket(`${protocol}//${host}`);
     this.ws.binaryType = 'arraybuffer';
 
+    // Immediate visual feedback during connection attempt
+    if (this.statusIndicator) {
+      this.statusIndicator.innerHTML = '<span class="dot yellow"></span> CONECTANDO...';
+    }
+
     this.ws.onopen = () => {
       this.wsConnected = true;
+      this.wsReconnectDelay = 1000; // Reset backoff on successful connection
       this.updateStatusBadge();
     };
 
     this.ws.onclose = () => {
       this.wsConnected = false;
       this.updateStatusBadge();
-      setTimeout(() => this.connectWebSocket(), 2000);
+      // Exponential backoff: 1s → 2s → 4s → 8s, capped at 10s
+      const delay = this.wsReconnectDelay || 1000;
+      this.wsReconnectDelay = Math.min(delay * 2, 10000);
+      setTimeout(() => this.connectWebSocket(), delay);
     };
 
     this.ws.onerror = () => {
@@ -275,6 +305,26 @@ class App {
       this.updateStatusBadge();
     } else if (msg.type === 'STATE_UPDATE') {
       this.applyFullState(msg.state, false);
+    } else if (msg.type === 'DRAG_UPDATE') {
+      // Lightweight delta: apply circle position updates from another client
+      if (msg.sceneId === this.scenesController.activeSceneId && !this.stage.dragTarget) {
+        for (const upd of msg.circles) {
+          const c = this.stage.circles.find(ci => ci.id === upd.id);
+          if (c) {
+            c.x = upd.x;
+            c.y = upd.y;
+          }
+        }
+      }
+    } else if (msg.type === 'SEGMENT_DRAG_UPDATE') {
+      // Lightweight delta: apply segment position updates from another client
+      if (msg.sceneId === this.scenesController.activeSceneId && !this.stage.dragTarget) {
+        const seg = this.stage.segments.find(s => s.id === msg.segId);
+        if (seg) {
+          seg.p1 = msg.p1;
+          seg.p2 = msg.p2;
+        }
+      }
     } else if (msg.type === 'STAGE_LIVE_UPDATE' || msg.type === 'MODIFIER_LIVE_UPDATE') {
       if (msg.sceneId === this.scenesController.activeSceneId) {
         if (!this.stage.dragTarget) {
@@ -300,11 +350,6 @@ class App {
     }
   }
 
-  sendLedFrame(uint8Array) {
-    if (this.ws && this.wsConnected && this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(uint8Array.buffer);
-    }
-  }
 
   syncStateToServer() {
     if (this.ws && this.wsConnected && this.ws.readyState === WebSocket.OPEN) {
@@ -373,8 +418,8 @@ class App {
 
   getCurrentElementsSnapshot() {
     return {
-      segments: JSON.parse(JSON.stringify(this.stage.segments)),
-      circles: JSON.parse(JSON.stringify(this.stage.circles))
+      segments: structuredClone(this.stage.segments),
+      circles: structuredClone(this.stage.circles)
     };
   }
 
@@ -540,7 +585,8 @@ class App {
     if (!this.createdCirclesListEl) return;
     this.createdCirclesListEl.innerHTML = '';
 
-    this.stage.circles.forEach(c => {
+    const sortedCircles = [...this.stage.circles].sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
+    sortedCircles.forEach(c => {
       const isSelected = this.stage.selectedIds.has(`circle-${c.id}`);
       const badge = document.createElement('div');
       badge.className = `circle-badge ${isSelected ? 'active blink-fade' : ''} ${c.off ? 'is-off' : ''}`;
