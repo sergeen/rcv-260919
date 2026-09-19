@@ -21,10 +21,9 @@ class StageEngine {
 
     this.glitchEngine = new GlitchEngine();
 
-    // Dragging / Interaction state
-    this.dragTarget = null; // { type: 'handle', segment, handle: 'p1'|'p2' } or { type: 'circle', circle, others: [] } or { type: 'segment_body', segment }
-    this.dragStart = { x: 0, y: 0 };
-    this.hasMoved = false;
+    // Dragging / Multi-touch Interaction state (pointerId -> PointerState)
+    this.activePointers = new Map();
+    this.dragStart = { x: 500, y: 250 };
     this.lastLiveSyncTime = 0;
 
     // Mode for placing a new circle
@@ -33,6 +32,10 @@ class StageEngine {
     this.initCanvasSize();
     this.bindEvents();
     this.startLoop();
+  }
+
+  get dragTarget() {
+    return this.activePointers.size > 0 ? this.activePointers.values().next().value.target : null;
   }
 
   initCanvasSize() {
@@ -65,9 +68,15 @@ class StageEngine {
   }
 
   onPointerDown(e) {
+    // Only accept primary button (left click) or touch/pen
+    if (e.button !== undefined && e.button !== 0) return;
+
+    if (e.pointerType === 'touch') {
+      e.preventDefault();
+    }
+
     const pos = this.getCanvasCoords(e);
     this.dragStart = { x: pos.x, y: pos.y };
-    this.hasMoved = false;
 
     // Check if in placement mode
     if (this.placementMode) {
@@ -76,49 +85,87 @@ class StageEngine {
       return;
     }
 
+    // Capture pointer to canvas so drag continues smoothly
+    if (this.canvas.setPointerCapture) {
+      try {
+        this.canvas.setPointerCapture(e.pointerId);
+      } catch (err) {}
+    }
+
+    let target = null;
+
     // 1. Check segment endpoints (hit radius: 30px for touch)
     if (!this.app.isSegmentsLocked) {
       for (const seg of this.segments) {
         const d1 = Math.hypot(pos.x - seg.p1.x, pos.y - seg.p1.y);
         if (d1 < 30) {
-          this.dragTarget = { type: 'handle', segment: seg, handle: 'p1', initial: { ...seg.p1 } };
+          target = {
+            type: 'handle',
+            segment: seg,
+            handle: 'p1',
+            startX: seg.p1.x,
+            startY: seg.p1.y
+          };
           this.selectElement(`segment-${seg.id}`, e.shiftKey || false);
-          return;
+          break;
         }
         const d2 = Math.hypot(pos.x - seg.p2.x, pos.y - seg.p2.y);
         if (d2 < 30) {
-          this.dragTarget = { type: 'handle', segment: seg, handle: 'p2', initial: { ...seg.p2 } };
+          target = {
+            type: 'handle',
+            segment: seg,
+            handle: 'p2',
+            startX: seg.p2.x,
+            startY: seg.p2.y
+          };
           this.selectElement(`segment-${seg.id}`, e.shiftKey || false);
-          return;
+          break;
         }
       }
     }
 
-    // 2. Check circles (from top to bottom in z-order)
-    for (let i = this.circles.length - 1; i >= 0; i--) {
-      const c = this.circles[i];
-      const r = (c.size / 100) * 110;
-      const d = Math.hypot(pos.x - c.x, pos.y - c.y);
-      if (d <= r) {
-        const id = `circle-${c.id}`;
-        if (!this.selectedIds.has(id)) {
-          // Select this circle
-          this.selectElement(id, false);
+    // 2. Check circles (from top to bottom in z-order: highest index on top)
+    if (!target) {
+      // Find which circles are already being dragged by another active finger
+      const claimedCircleIds = new Set();
+      for (const p of this.activePointers.values()) {
+        if (p.target && p.target.type === 'circle' && p.target.circle) {
+          claimedCircleIds.add(p.target.circle.id);
         }
+      }
 
-        // Prepare multi-drag for all selected circles
-        const selectedCircles = this.circles.filter(ci => this.selectedIds.has(`circle-${ci.id}`));
-        this.dragTarget = {
-          type: 'circle',
-          mainCircle: c,
-          elements: selectedCircles.map(sc => ({ circle: sc, startX: sc.x, startY: sc.y }))
-        };
-        return;
+      for (let i = this.circles.length - 1; i >= 0; i--) {
+        const c = this.circles[i];
+        if (claimedCircleIds.has(c.id)) continue;
+
+        const r = (c.size / 100) * 110;
+        const d = Math.hypot(pos.x - c.x, pos.y - c.y);
+        if (d <= r) {
+          const id = `circle-${c.id}`;
+
+          // Multi-touch selection: if already holding another circle, add this one too
+          const isMulti = this.activePointers.size > 0 || e.shiftKey;
+          if (!this.selectedIds.has(id)) {
+            if (!isMulti) {
+              this.selectedIds.clear();
+            }
+            this.selectedIds.add(id);
+            this.app.onSelectionChanged();
+          }
+
+          target = {
+            type: 'circle',
+            circle: c,
+            startX: c.x,
+            startY: c.y
+          };
+          break;
+        }
       }
     }
 
     // 3. Check segment line bodies
-    if (!this.app.isSegmentsLocked) {
+    if (!target && !this.app.isSegmentsLocked) {
       for (const seg of this.segments) {
         const dist = this.distToSegment(pos, seg.p1, seg.p2);
         if (dist < 20) {
@@ -126,53 +173,68 @@ class StageEngine {
           if (!this.selectedIds.has(id)) {
             this.selectElement(id, false);
           }
-          this.dragTarget = {
+          target = {
             type: 'segment_body',
             segment: seg,
             startP1: { ...seg.p1 },
             startP2: { ...seg.p2 }
           };
-          return;
+          break;
         }
       }
     }
 
-    // Tapped on empty stage background: deselect
-    this.clearSelection();
+    if (target) {
+      this.activePointers.set(e.pointerId, {
+        pointerId: e.pointerId,
+        dragStart: { x: pos.x, y: pos.y },
+        hasMoved: false,
+        target: target
+      });
+    } else {
+      // Tapped empty background: clear selection only if no other fingers are active
+      if (this.activePointers.size === 0) {
+        this.clearSelection();
+      }
+    }
   }
 
   onPointerMove(e) {
-    if (!this.dragTarget) return;
+    // CRITICAL: Strict pointer isolation.
+    // If this pointer did NOT originate on a stage element (e.g. moving a slider, badge, or menu),
+    // IGNORE IT COMPLETELY. This prevents sliders from causing circles to jump to corners!
+    const ptr = this.activePointers.get(e.pointerId);
+    if (!ptr || !ptr.target) return;
+
     const pos = this.getCanvasCoords(e);
-    const dx = pos.x - this.dragStart.x;
-    const dy = pos.y - this.dragStart.y;
+    const dx = pos.x - ptr.dragStart.x;
+    const dy = pos.y - ptr.dragStart.y;
 
     if (Math.hypot(dx, dy) > 4) {
-      this.hasMoved = true;
+      ptr.hasMoved = true;
     }
 
-    if (this.dragTarget.type === 'handle') {
-      const seg = this.dragTarget.segment;
-      if (this.dragTarget.handle === 'p1') {
-        seg.p1.x = Math.max(10, Math.min(this.width - 10, pos.x));
-        seg.p1.y = Math.max(10, Math.min(this.height - 10, pos.y));
+    if (ptr.target.type === 'circle') {
+      const c = ptr.target.circle;
+      c.x = Math.max(20, Math.min(this.width - 20, ptr.target.startX + dx));
+      c.y = Math.max(20, Math.min(this.height - 20, ptr.target.startY + dy));
+      this.app.scenesController.markActiveSceneModified();
+    } else if (ptr.target.type === 'handle') {
+      const seg = ptr.target.segment;
+      if (ptr.target.handle === 'p1') {
+        seg.p1.x = Math.max(10, Math.min(this.width - 10, ptr.target.startX + dx));
+        seg.p1.y = Math.max(10, Math.min(this.height - 10, ptr.target.startY + dy));
       } else {
-        seg.p2.x = Math.max(10, Math.min(this.width - 10, pos.x));
-        seg.p2.y = Math.max(10, Math.min(this.height - 10, pos.y));
+        seg.p2.x = Math.max(10, Math.min(this.width - 10, ptr.target.startX + dx));
+        seg.p2.y = Math.max(10, Math.min(this.height - 10, ptr.target.startY + dy));
       }
       this.app.scenesController.markActiveSceneModified();
-    } else if (this.dragTarget.type === 'circle') {
-      this.dragTarget.elements.forEach(item => {
-        item.circle.x = Math.max(20, Math.min(this.width - 20, item.startX + dx));
-        item.circle.y = Math.max(20, Math.min(this.height - 20, item.startY + dy));
-      });
-      this.app.scenesController.markActiveSceneModified();
-    } else if (this.dragTarget.type === 'segment_body') {
-      const seg = this.dragTarget.segment;
-      seg.p1.x = Math.max(10, Math.min(this.width - 10, this.dragTarget.startP1.x + dx));
-      seg.p1.y = Math.max(10, Math.min(this.height - 10, this.dragTarget.startP1.y + dy));
-      seg.p2.x = Math.max(10, Math.min(this.width - 10, this.dragTarget.startP2.x + dx));
-      seg.p2.y = Math.max(10, Math.min(this.height - 10, this.dragTarget.startP2.y + dy));
+    } else if (ptr.target.type === 'segment_body') {
+      const seg = ptr.target.segment;
+      seg.p1.x = Math.max(10, Math.min(this.width - 10, ptr.target.startP1.x + dx));
+      seg.p1.y = Math.max(10, Math.min(this.height - 10, ptr.target.startP1.y + dy));
+      seg.p2.x = Math.max(10, Math.min(this.width - 10, ptr.target.startP2.x + dx));
+      seg.p2.y = Math.max(10, Math.min(this.height - 10, ptr.target.startP2.y + dy));
       this.app.scenesController.markActiveSceneModified();
     }
 
@@ -180,24 +242,46 @@ class StageEngine {
     const now = performance.now();
     if (now - this.lastLiveSyncTime > 25) { // ~40 FPS
       this.lastLiveSyncTime = now;
-      if (this.dragTarget.type === 'circle') {
-        this.app.sendDragUpdate(this.dragTarget.elements);
-      } else if (this.dragTarget.type === 'handle') {
-        this.app.sendSegmentDragUpdate(this.dragTarget.segment.id, this.dragTarget.segment.p1, this.dragTarget.segment.p2);
-      } else if (this.dragTarget.type === 'segment_body') {
-        this.app.sendSegmentDragUpdate(this.dragTarget.segment.id, this.dragTarget.segment.p1, this.dragTarget.segment.p2);
+
+      // Collect all circles currently moved by any active pointer
+      const movedCircles = [];
+      for (const p of this.activePointers.values()) {
+        if (p.target && p.target.type === 'circle' && p.target.circle) {
+          movedCircles.push({ circle: p.target.circle });
+        }
+      }
+
+      if (movedCircles.length > 0) {
+        this.app.sendDragUpdate(movedCircles);
+      }
+
+      // Check if any segment is currently being moved
+      for (const p of this.activePointers.values()) {
+        if (p.target && (p.target.type === 'handle' || p.target.type === 'segment_body')) {
+          this.app.sendSegmentDragUpdate(p.target.segment.id, p.target.segment.p1, p.target.segment.p2);
+        }
       }
     }
   }
 
   onPointerUp(e) {
-    if (this.dragTarget) {
-      if (this.hasMoved) {
-        this.app.scenesController.markActiveSceneModified();
-        this.app.syncStateToServer();
-      }
-      this.dragTarget = null;
+    const ptr = this.activePointers.get(e.pointerId);
+    if (!ptr) return;
+
+    if (this.canvas.releasePointerCapture) {
+      try {
+        if (this.canvas.hasPointerCapture(e.pointerId)) {
+          this.canvas.releasePointerCapture(e.pointerId);
+        }
+      } catch (err) {}
     }
+
+    if (ptr.hasMoved) {
+      this.app.scenesController.markActiveSceneModified();
+      this.app.syncStateToServer();
+    }
+
+    this.activePointers.delete(e.pointerId);
   }
 
   distToSegment(p, v, w) {
