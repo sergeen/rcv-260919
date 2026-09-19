@@ -12,6 +12,7 @@ class ScenesController {
     this.sceneSymbols = ['!', '?', '/', '[', '-', ':', '>', '~'];
     this.activeSceneId = '~';
     this.scenes = {};
+    this.storedPresets = {};
     this.isRecordArmed = false;
 
     this.initDefaultScenes();
@@ -27,10 +28,13 @@ class ScenesController {
           circles: []
         };
       }
+      if (!this.storedPresets[sym]) {
+        this.storedPresets[sym] = structuredClone(this.scenes[sym]);
+      }
     });
   }
 
-  loadScenesData(scenesData, activeId = '~') {
+  loadScenesData(scenesData, activeId = '~', storedPresetsData = null) {
     if (scenesData) {
       this.scenes = Object.assign({}, scenesData);
       this.sceneSymbols.forEach(sym => {
@@ -39,6 +43,13 @@ class ScenesController {
         }
       });
     }
+
+    if (storedPresetsData) {
+      this.storedPresets = Object.assign({}, storedPresetsData);
+    } else {
+      this.storedPresets = structuredClone(this.scenes);
+    }
+
     this.activeSceneId = activeId || '~';
     this.updateSceneButtonsUI();
   }
@@ -92,11 +103,14 @@ class ScenesController {
   recordCurrentStageToScene(sceneId) {
     const snapshot = this.app.getCurrentElementsSnapshot();
 
-    this.scenes[sceneId] = {
+    const newLook = {
       isCustomized: true,
       segments: structuredClone(snapshot.segments),
       circles: structuredClone(snapshot.circles)
     };
+
+    this.storedPresets[sceneId] = structuredClone(newLook);
+    this.scenes[sceneId] = structuredClone(newLook);
 
     this.activeSceneId = sceneId;
     this.isRecordArmed = false;
@@ -118,7 +132,7 @@ class ScenesController {
    * Recall a recorded scene's look onto the stage
    */
   selectScene(newSceneId) {
-    const target = this.scenes[newSceneId];
+    const target = this.storedPresets[newSceneId] || this.scenes[newSceneId];
     this.activeSceneId = newSceneId;
     this.updateSceneButtonsUI();
 
@@ -132,17 +146,21 @@ class ScenesController {
       : [];
 
     this.app.applySceneElements({ segments: segmentsToLoad, circles: circlesToLoad });
+    this.markActiveSceneModified();
     this.app.syncStateToServer();
   }
 
   /**
    * Live modification hook (called during slider/drag operations).
-   * In console workflow, live stage changes are live on the stage and strip,
-   * but do not permanently overwrite scenes until RECORD is pressed.
+   * Keeps this.scenes[this.activeSceneId] in sync with the live stage so that
+   * live sync and LED engine always use current positions.
+   * Does NOT overwrite this.storedPresets (which only updates on REC).
    */
   markActiveSceneModified() {
-    // In record-based workflow, live changes don't overwrite the stored scene memory.
-    // The user presses REC -> Scene to store.
+    if (this.app && this.app.stage && this.scenes[this.activeSceneId]) {
+      this.scenes[this.activeSceneId].segments = structuredClone(this.app.stage.segments);
+      this.scenes[this.activeSceneId].circles = structuredClone(this.app.stage.circles);
+    }
   }
 
   updateSceneButtonsUI() {
@@ -154,9 +172,11 @@ class ScenesController {
   }
 
   getExportData() {
+    this.markActiveSceneModified();
     return {
       activeSceneId: this.activeSceneId,
-      scenes: this.scenes
+      scenes: this.scenes,
+      storedPresets: this.storedPresets
     };
   }
 }

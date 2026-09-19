@@ -193,6 +193,7 @@ class StageEngine {
   onPointerUp(e) {
     if (this.dragTarget) {
       if (this.hasMoved) {
+        this.app.scenesController.markActiveSceneModified();
         this.app.syncStateToServer();
       }
       this.dragTarget = null;

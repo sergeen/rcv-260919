@@ -381,9 +381,15 @@ class App {
   /* -------------------------------------------------------------------------- */
   getFullState() {
     const scenesData = this.scenesController.getExportData();
+    const current = this.getCurrentElementsSnapshot();
+    if (scenesData.scenes && scenesData.activeSceneId && scenesData.scenes[scenesData.activeSceneId]) {
+      scenesData.scenes[scenesData.activeSceneId].segments = current.segments;
+      scenesData.scenes[scenesData.activeSceneId].circles = current.circles;
+    }
     return {
       activeSceneId: scenesData.activeSceneId,
       scenes: scenesData.scenes,
+      storedPresets: scenesData.storedPresets,
       predefinedCircles: this.predefinedTemplates,
       selectedElementIds: Array.from(this.stage.selectedIds),
       segmentsLocked: this.isSegmentsLocked
@@ -403,7 +409,7 @@ class App {
     }
 
     if (state.scenes) {
-      this.scenesController.loadScenesData(state.scenes, state.activeSceneId || '~');
+      this.scenesController.loadScenesData(state.scenes, state.activeSceneId || '~', state.storedPresets || null);
       const activeScene = state.scenes[state.activeSceneId || '~'];
       if (activeScene) {
         this.applySceneElements(activeScene);

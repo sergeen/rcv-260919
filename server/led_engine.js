@@ -17,6 +17,7 @@ class LedEngine {
     this.glitchInterval = null;
     this.lastRenderTime = 0;
     this.hasActiveGlitch = false;
+    this.trailingTimer = null;
 
     // Check for active glitch circles periodically and start/stop the continuous timer
     this._checkGlitchState();
@@ -55,7 +56,7 @@ class LedEngine {
 
     const activeSceneId = state.activeSceneId || '~';
     const scene = state.scenes[activeSceneId];
-    if (!scene || !scene.circles) {
+    if (!scene || !scene.circles || scene.circles.length === 0) {
       this._stopGlitchTimer();
       this.hasActiveGlitch = false;
       return;
@@ -75,13 +76,27 @@ class LedEngine {
   /**
    * Immediate render trigger (called on live drag / slider updates).
    * Always renders a frame and re-evaluates whether glitch timer is needed.
+   * Includes a trailing timer to guarantee the final resting position frame is rendered.
    */
   triggerLiveUpdate() {
     const now = Date.now();
     // Allow high responsiveness during active dragging (min 16ms between frames)
     if (now - this.lastRenderTime >= 16) {
+      if (this.trailingTimer) {
+        clearTimeout(this.trailingTimer);
+        this.trailingTimer = null;
+      }
       this.glitchEngine.update();
       this.renderFrame();
+    } else {
+      // Trailing render guarantees final resting frame is never lost
+      if (!this.trailingTimer) {
+        this.trailingTimer = setTimeout(() => {
+          this.trailingTimer = null;
+          this.glitchEngine.update();
+          this.renderFrame();
+        }, 20);
+      }
     }
     this._checkGlitchState();
   }

@@ -242,13 +242,21 @@ class SerialManager extends EventEmitter {
 
       // Wait until physical transmission completes before sending next frame
       if (typeof this.port.drain === 'function') {
-        this.port.drain(() => {
+        let drained = false;
+        const onDrainDone = () => {
+          if (drained) return;
+          drained = true;
+          clearTimeout(drainTimeout);
           this.isSending = false;
           if (this.pendingFrame) {
             const next = this.pendingFrame;
             this.pendingFrame = null;
             this._writeFramePacket(next);
           }
+        };
+        const drainTimeout = setTimeout(onDrainDone, 35);
+        this.port.drain(() => {
+          onDrainDone();
         });
       } else {
         this.isSending = false;
