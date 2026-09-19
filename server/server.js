@@ -149,7 +149,6 @@ wss.on('connection', (ws) => {
         // Lightweight delta: only update moved circles' x,y positions
         if (appState.scenes && appState.scenes[data.sceneId]) {
           const scene = appState.scenes[data.sceneId];
-          scene.isCustomized = true;
           for (const upd of data.circles) {
             const target = scene.circles.find(c => c.id === upd.id);
             if (target) {
@@ -158,7 +157,6 @@ wss.on('connection', (ws) => {
             }
           }
         }
-        debouncedSaveState(600);
         ledEngine.triggerLiveUpdate();
         // Throttled broadcast to secondary clients (~20 FPS max)
         const now = Date.now();
@@ -170,14 +168,12 @@ wss.on('connection', (ws) => {
         // Lightweight delta: only update moved segment's endpoints
         if (appState.scenes && appState.scenes[data.sceneId]) {
           const scene = appState.scenes[data.sceneId];
-          scene.isCustomized = true;
           const seg = scene.segments.find(s => s.id === data.segId);
           if (seg) {
             seg.p1 = data.p1;
             seg.p2 = data.p2;
           }
         }
-        debouncedSaveState(600);
         ledEngine.triggerLiveUpdate();
         const now = Date.now();
         if (now - lastDragBroadcast > 50) {
@@ -186,11 +182,9 @@ wss.on('connection', (ws) => {
         }
       } else if (data.type === 'STAGE_LIVE_UPDATE') {
         if (appState.scenes && appState.scenes[data.sceneId]) {
-          appState.scenes[data.sceneId].isCustomized = true;
           appState.scenes[data.sceneId].segments = data.segments;
           appState.scenes[data.sceneId].circles = data.circles;
         }
-        debouncedSaveState(600);
         // Force immediate render to physical WS2812B strip as circle moves
         ledEngine.triggerLiveUpdate();
         broadcast({
@@ -201,11 +195,9 @@ wss.on('connection', (ws) => {
         }, ws);
       } else if (data.type === 'MODIFIER_LIVE_UPDATE') {
         if (appState.scenes && appState.scenes[data.sceneId]) {
-          appState.scenes[data.sceneId].isCustomized = true;
           appState.scenes[data.sceneId].segments = data.segments;
           appState.scenes[data.sceneId].circles = data.circles;
         }
-        debouncedSaveState(600);
         // Force immediate render to physical WS2812B strip
         ledEngine.triggerLiveUpdate();
         broadcast({

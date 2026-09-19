@@ -687,11 +687,74 @@ html, body {
   border-color: var(--active-red);
 }
 
-.scene-grid-btn.empty-slot {
-  border-color: rgba(0, 136, 40, 0.15);
-  background: transparent;
-  cursor: default;
-  pointer-events: none;
+.scene-grid-btn.btn-rec {
+  background: #180003;
+  border-color: #880015;
+  color: #ff3344;
+  font-size: 11px;
+  letter-spacing: 1px;
+  font-weight: 900;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.scene-grid-btn.btn-rec:hover {
+  background: #330008;
+  border-color: #ff2233;
+  color: #ffffff;
+}
+
+.scene-grid-btn.btn-rec.armed {
+  background: #ff0022;
+  color: #000000;
+  border-color: #ffffff;
+  animation: recBlink 0.6s infinite alternate ease-in-out;
+}
+
+@keyframes recBlink {
+  from {
+    background: #ff0022;
+    box-shadow: 0 0 6px #ff0022;
+    color: #ffffff;
+  }
+  to {
+    background: #880011;
+    box-shadow: 0 0 14px #ff0022, 0 0 4px #ffffff;
+    color: #000000;
+  }
+}
+
+/* When REC is armed, target scene slots pulse with a red hint */
+.scenes-grid.rec-armed .scene-grid-btn:not(.btn-rec) {
+  border-color: rgba(255, 68, 68, 0.7);
+  box-shadow: inset 0 0 4px rgba(255, 0, 34, 0.3);
+}
+
+.scenes-grid.rec-armed .scene-grid-btn:not(.btn-rec):hover {
+  background: rgba(255, 0, 34, 0.35);
+  border-color: #ffffff;
+  color: #ffffff;
+  box-shadow: 0 0 8px #ff0022;
+}
+
+/* Flash feedback on recorded scene */
+.scene-grid-btn.recorded-flash {
+  animation: recordedFlash 0.6s ease-out;
+}
+
+@keyframes recordedFlash {
+  0% {
+    background: #00ff41;
+    color: #000000;
+    box-shadow: 0 0 16px #00ff41;
+    border-color: #ffffff;
+  }
+  100% {
+    background: #000000;
+    color: var(--cyber-green);
+    box-shadow: none;
+    border-color: var(--border-green);
+  }
 }
 
 /* ------------------------------------------------------------------------------

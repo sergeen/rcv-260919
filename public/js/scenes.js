@@ -1,7 +1,9 @@
 /**
  * REQUIEM CABARET VOLTAIRE 2026 - SCENES CONTROLLER
- * Manages the artistic diamond scene buttons (! ? / [ - : > ~)
- * Implements status inheritance until modified.
+ * Professional lighting-desk scene manager with RECORD workflow.
+ * Scenes (! ? / [ - : > ~) act as stored memories.
+ * Hitting RECORD arms record mode; tapping a scene button records the live look into that scene.
+ * Tapping a scene normally recalls that scene's stored look.
  */
 
 class ScenesController {
@@ -10,6 +12,7 @@ class ScenesController {
     this.sceneSymbols = ['!', '?', '/', '[', '-', ':', '>', '~'];
     this.activeSceneId = '~';
     this.scenes = {};
+    this.isRecordArmed = false;
 
     this.initDefaultScenes();
     this.bindEvents();
@@ -45,51 +48,101 @@ class ScenesController {
     if (!pad) return;
 
     pad.addEventListener('click', (e) => {
+      // 1. Check if REC button was clicked
+      const recBtn = e.target.closest('#btnRecordScene, .btn-rec');
+      if (recBtn) {
+        this.toggleRecordMode();
+        return;
+      }
+
+      // 2. Check if a Scene button was clicked
       const btn = e.target.closest('.scene-grid-btn, .scene-diamond-btn');
       if (!btn) return;
       const sceneId = btn.dataset.scene;
       if (sceneId) {
-        this.selectScene(sceneId);
+        if (this.isRecordArmed) {
+          this.recordCurrentStageToScene(sceneId);
+        } else {
+          this.selectScene(sceneId);
+        }
       }
     });
   }
 
-  selectScene(newSceneId) {
-    if (newSceneId === this.activeSceneId) return;
+  toggleRecordMode() {
+    this.isRecordArmed = !this.isRecordArmed;
+    this.updateRecordUI();
+  }
 
-    // Capture current scene's elements
-    const currentElements = this.app.getCurrentElementsSnapshot();
+  updateRecordUI() {
+    const recBtn = document.getElementById('btnRecordScene');
+    const pad = document.getElementById('scenesGrid') || document.getElementById('scenesDiamondPad');
 
-    // Check if target scene has its own customized state
-    const targetScene = this.scenes[newSceneId];
-    if (!targetScene || !targetScene.isCustomized) {
-      // Inherit last status from current scene!
-      this.scenes[newSceneId] = {
-        isCustomized: false,
-        segments: JSON.parse(JSON.stringify(currentElements.segments)),
-        circles: JSON.parse(JSON.stringify(currentElements.circles))
-      };
+    if (recBtn) {
+      recBtn.classList.toggle('armed', this.isRecordArmed);
     }
+    if (pad) {
+      pad.classList.toggle('rec-armed', this.isRecordArmed);
+    }
+  }
 
-    this.activeSceneId = newSceneId;
+  /**
+   * Record current live stage look into the chosen scene (Classic Console Workflow)
+   */
+  recordCurrentStageToScene(sceneId) {
+    const snapshot = this.app.getCurrentElementsSnapshot();
+
+    this.scenes[sceneId] = {
+      isCustomized: true,
+      segments: structuredClone(snapshot.segments),
+      circles: structuredClone(snapshot.circles)
+    };
+
+    this.activeSceneId = sceneId;
+    this.isRecordArmed = false;
+    this.updateRecordUI();
     this.updateSceneButtonsUI();
 
-    // Notify app to load target scene's elements
-    this.app.applySceneElements(this.scenes[newSceneId]);
+    // Visual confirmation flash on the recorded button
+    const btn = document.querySelector(`.scene-grid-btn[data-scene="${sceneId}"]`);
+    if (btn) {
+      btn.classList.add('recorded-flash');
+      setTimeout(() => btn.classList.remove('recorded-flash'), 600);
+    }
+
+    // Persist full state to server and save to disk
     this.app.syncStateToServer();
   }
 
   /**
-   * Called whenever the user modifies any circle, segment, or slider.
-   * Marks the current scene as customized so it maintains its own independent state.
+   * Recall a recorded scene's look onto the stage
+   */
+  selectScene(newSceneId) {
+    const target = this.scenes[newSceneId];
+    this.activeSceneId = newSceneId;
+    this.updateSceneButtonsUI();
+
+    // If target scene has segments, use them. If not, preserve current stage segments
+    const currentSnapshot = this.app.getCurrentElementsSnapshot();
+    const segmentsToLoad = (target && target.segments && target.segments.length > 0)
+      ? structuredClone(target.segments)
+      : structuredClone(currentSnapshot.segments);
+    const circlesToLoad = (target && target.circles)
+      ? structuredClone(target.circles)
+      : [];
+
+    this.app.applySceneElements({ segments: segmentsToLoad, circles: circlesToLoad });
+    this.app.syncStateToServer();
+  }
+
+  /**
+   * Live modification hook (called during slider/drag operations).
+   * In console workflow, live stage changes are live on the stage and strip,
+   * but do not permanently overwrite scenes until RECORD is pressed.
    */
   markActiveSceneModified() {
-    if (this.scenes[this.activeSceneId]) {
-      this.scenes[this.activeSceneId].isCustomized = true;
-      const snapshot = this.app.getCurrentElementsSnapshot();
-      this.scenes[this.activeSceneId].segments = snapshot.segments;
-      this.scenes[this.activeSceneId].circles = snapshot.circles;
-    }
+    // In record-based workflow, live changes don't overwrite the stored scene memory.
+    // The user presses REC -> Scene to store.
   }
 
   updateSceneButtonsUI() {
