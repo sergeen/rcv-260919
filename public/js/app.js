@@ -10,6 +10,7 @@ class App {
     this.wsConnected = false;
     this.isServerSimulated = true;
     this.wifiIp = 'localhost';
+    this.hotspotIp = null;
 
     // Sub-controllers
     this.stage = new StageEngine(this);
@@ -293,6 +294,7 @@ class App {
   handleServerMessage(msg) {
     if (msg.type === 'INIT') {
       if (msg.wifiIp) this.wifiIp = msg.wifiIp;
+      if (msg.hotspotIp) this.hotspotIp = msg.hotspotIp;
       if (msg.serial) {
         this.isServerSimulated = msg.serial.simulated;
         this.updateStatusBadge();
@@ -371,8 +373,14 @@ class App {
       this.statusIndicator.innerHTML = '<span class="dot green"></span> MEGA 2560 CONECTADO';
     }
 
-    if (this.wifiIpDisplay) {
-      this.wifiIpDisplay.textContent = `http://${this.wifiIp}:${window.location.port || 3000}`;
+    const port = window.location.port || 3000;
+    const hotspotEl = document.getElementById('hotspotUrl');
+    if (hotspotEl) {
+      hotspotEl.textContent = `http://${this.hotspotIp || '192.168.137.1'}:${port}`;
+    }
+    const wifiEl = document.getElementById('wifiUrl');
+    if (wifiEl) {
+      wifiEl.textContent = `http://${this.wifiIp}:${port}`;
     }
   }
 

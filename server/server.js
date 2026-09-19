@@ -121,11 +121,13 @@ function broadcast(data, excludeWs = null) {
 
 wss.on('connection', (ws) => {
   // Send initial state & serial status on connect
+  const netInfo = getNetworkIps();
   ws.send(JSON.stringify({
     type: 'INIT',
     state: appState,
     serial: serialManager.getStatus(),
-    wifiIp: getLocalIpAddress()
+    wifiIp: netInfo.wifiIp,
+    hotspotIp: netInfo.hotspotIp
   }));
 
   // Throttle tracking for drag broadcast to secondary clients
@@ -231,36 +233,45 @@ serialManager.on('status', (status) => {
   broadcast({ type: 'SERIAL_STATUS', serial: status });
 });
 
-// Helper: detect local IPv4 address for Wi-Fi / LAN
-function getLocalIpAddress() {
+// Helper: detect local IPv4 addresses (Wi-Fi LAN & Windows Mobile Hotspot)
+function getNetworkIps() {
   const interfaces = os.networkInterfaces();
-  let wifiIp = 'localhost';
+  let wifiIp = null;
+  let hotspotIp = null;
+  let fallbackIp = 'localhost';
 
   for (const name of Object.keys(interfaces)) {
     for (const iface of interfaces[name]) {
       if (iface.family === 'IPv4' && !iface.internal) {
-        // Prioritize Wi-Fi or Wireless adapters
-        const lower = name.toLowerCase();
-        if (lower.includes('wi-fi') || lower.includes('wireless') || lower.includes('wlan')) {
-          return iface.address;
-        }
-        if (wifiIp === 'localhost') {
+        // Windows Mobile Hotspot adapter defaults to 192.168.137.x or virtual adapter name
+        if (iface.address.startsWith('192.168.137.')) {
+          hotspotIp = iface.address;
+        } else if (name.toLowerCase().includes('wi-fi') || name.toLowerCase().includes('wireless') || name.toLowerCase().includes('wlan')) {
           wifiIp = iface.address;
+        } else if (fallbackIp === 'localhost') {
+          fallbackIp = iface.address;
         }
       }
     }
   }
-  return wifiIp;
+
+  return {
+    wifiIp: wifiIp || fallbackIp,
+    hotspotIp: hotspotIp || null
+  };
 }
 
 // Start Server
 server.listen(PORT, '0.0.0.0', () => {
-  const ip = getLocalIpAddress();
+  const netInfo = getNetworkIps();
   console.log('\n============================================================');
   console.log('   REQUIEM CABARET VOLTAIRE 2026 - LED STAGE CONTROLLER   ');
   console.log('============================================================');
-  console.log(` > Local Computer:    http://localhost:${PORT}`);
-  console.log(` > Phone / Wi-Fi URL: http://${ip}:${PORT}`);
-  console.log(` > Serial Status:     ${serialManager.isConnected ? `Connected (${serialManager.portPath})` : 'Simulated / Disconnected'}`);
+  console.log(` > Local Computer:         http://localhost:${PORT}`);
+  if (netInfo.hotspotIp) {
+    console.log(` > Phone / Hotspot URL:    http://${netInfo.hotspotIp}:${PORT}  <-- SI USAS ZONA MOVIL`);
+  }
+  console.log(` > Phone / Wi-Fi Router:   http://${netInfo.wifiIp}:${PORT}`);
+  console.log(` > Serial Status:          ${serialManager.isConnected ? `Connected (${serialManager.portPath})` : 'Simulated / Disconnected'}`);
   console.log('============================================================\n');
 });
