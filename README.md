@@ -1,202 +1,172 @@
-# REQUIEM CABARET VOLTAIRE 2026 - LED STAGE CONTROLLER
+# REQUIEM CABARET VOLTAIRE 2026 - CONTROLADOR DE ESCENARIO LED
 
-A specialized mobile-optimized web interface and hardware bridge to control addressable **WS2812B** LED strips using an **ELEGOO MEGA 2560** (Arduino Mega 2560-compatible) via USB serial.
-
----
-
-## Project Overview & Artistic Intentions
-
-*Requiem Cabaret Voltaire 2026* is a bespoke, real-time spatial lighting instrument and cybernetic controller designed for live theatrical and audiovisual art performance. It bridges mobile tactile gestures with physical WS2812B addressable LEDs driven by an ELEGOO Mega 2560 via high-speed USB serial.
-
-### 1. The Core Artistic Intent
-Traditional DMX lighting consoles isolate the operator behind complex cue stacks and channel faders. *Requiem Cabaret Voltaire* re-imagines light control as **direct spatial painting**:
-- **Segments as Physical Reality**: LED strips installed across the performance space are mirrored on the 2D stage canvas as flexible geometric segments with configurable physical LED index ranges (`startLed` .. `endLed`).
-- **Circles as Fields of Influence**: Rather than setting colors per channel, the artist places dynamic, draggable circles on the stage. Any physical LED entering a circle’s boundary instantly ignites with its color, size, and chaotic glitch traits. Intersecting circles blend additively, creating live optical interference patterns in real space.
-- **Zero-Latency Physicality**: When the performer drags a circle with their finger on a smartphone, the physical light moves across the room with zero perceptible lag (~40 FPS live streaming with hardware flow control).
-
-### 2. The Aesthetics of Noise & Disorientation
-Rooted in the Dadaist rebellion of Cabaret Voltaire (Zurich, 1916), the analog video magnetism of Nam June Paik, and the high-frequency algorithmic strobism of Ryoji Ikeda:
-- **3-Phase Glitch Engine**: Traverses from subtle analog voltage sag and tape dropouts (`■□□` / 1%–33%), to chromatic channel splitting and complementary bit-flips (`■■□` / 34%–66%), culminating in a blinding 45 Hz stroboscopic sensory overload (`■■■` / 67%–100%).
-- **Cyberpunk Visual System**: Monolithic pitch-black stage, 4px neon green boundary lines, pulsing crimson red for active selection, and distinct **amber-yellow indicators for muted/turned-off states**, avoiding any visual ambiguity in dark stage conditions.
-
-### 3. Performance Ergonomics & Stage Safety
-Live performance demands rapid setup and absolute stability:
-- **Customizable Predefined Templates (Fast Stamping)**: Four color/glitch/size presets allow swift parameter tuning and immediate placement onto the stage, auto-deselecting after each tap to avoid unintended drags.
-- **Segment Lock Shield (`LOCK`)**: A dedicated lock toggle immobilizes all physical LED segments—preventing accidental remapping, moving, or deletion while enabling the artist to freely play influence circles around them during a show.
-- **Immersive Full-Screen Modals**: Custom in-app dialogs replace native browser prompts to maintain full-screen lock on mobile devices without browser interruption.
-- **Authoritative Server Engine**: The computer directly computes geometric collisions and dispatches binary RGB frames to the Arduino, ensuring continuous animation and glitching even if the mobile device sleeps or changes Wi-Fi state.
+Interfaz web táctil para móviles y puente de hardware para controlar tiras LED direccionables **WS2812B** con un **ELEGOO MEGA 2560** (o Arduino Mega 2560) mediante conexión serie USB.
 
 ---
 
-## System Architecture
+## Concepto y Funcionamiento
+
+*Requiem Cabaret Voltaire 2026* es un instrumento de iluminación en tiempo real para artes escénicas y audiovisuales. Convierte los gestos táctiles en un móvil en luz física con latencia ultra baja (~40 FPS).
+
+### 1. Control Espacial Directo
+- **Segmentos físicos**: Representan las tiras LED montadas en el espacio real, definidas en el lienzo 2D por sus índices de LED (`startLed` .. `endLed`).
+- **Círculos de influencia**: En lugar de faders tradicionales, se colocan círculos interactivos en el escenario. Cualquier LED físico dentro de un círculo adopta su color, tamaño y efectos de glitch. Los círculos superpuestos se mezclan de forma aditiva.
+- **Respuesta inmediata**: Al arrastrar un círculo con el dedo, la luz física se desplaza en el espacio sin retardo perceptible.
+
+### 2. Motor de Glitch (3 Fases)
+El control deslizante **GLICH** (0% a 100%) y su indicador (`□□□`) recorren tres etapas estéticas:
+
+1. **Fase 1: Degradación analógica (`■□□` / 1%–33%)**
+   - Microcortes esporádicos en LEDs individuales (1–2 fotogramas).
+   - Caídas orgánicas de brillo que simulan caídas de tensión.
+   - Ruido sutil en el perímetro de los círculos.
+2. **Fase 2: Separación cromática y picos de color (`■■□` / 34%–66%)**
+   - Ruptura de canales RGB (por ejemplo, destellos esmeralda o inversión a magenta).
+   - Parpadeos repentinos de alta saturación en colores complementarios.
+   - Microvariaciones rítmicas en el radio de los círculos.
+3. **Fase 3: Estroboscópico de alta frecuencia (`■■■` / 67%–100%)**
+   - Parpadeo tipo obturador que escala de 15 Hz hasta 45 Hz.
+   - Alternancia rápida entre blanco cegador, apagón total y colores primarios puros.
+
+### 3. Seguridad y Operación en Escenario
+- **Bloqueo de segmentos (`LOCK`)**: Inmoviliza los segmentos LED para evitar moverlos o borrarlos por error mientras se manipulan los círculos durante la función.
+- **Plantillas rápidas**: 4 ranuras predefinidas para ajustar parámetros y estampar círculos al instante en el escenario.
+- **Servidor autoritativo**: Node.js calcula las colisiones geométricas y envía los fotogramas binarios al microcontrolador. Si el móvil suspende la pantalla o pierde Wi-Fi, la animación continúa sin interrumpirse.
+
+---
+
+## Arquitectura del Sistema
 
 ```
   ┌─────────────────────────────────────────────────────────┐
-  │                 SMARTPHONE / BROWSER                    │
-  │     Mobile Landscape UI: Segments, Circles, Scenes      │
-  │          HTML5 Interactive Stage & Glitch Engine        │
+  │                 SMARTPHONE / NAVEGADOR                  │
+  │   Interfaz táctil apaisada: Segmentos, Círculos, Escenas │
   └────────────────────────────┬────────────────────────────┘
                                │ Wi-Fi (WebSocket + HTTP)
                                ▼
   ┌─────────────────────────────────────────────────────────┐
-  │             HOST COMPUTER (Node.js Server)              │
-  │   - Static HTTP Server (Mobile Web UI)                  │
-  │   - WebSocket Server (State synchronization & frames)   │
-  │   - State Persistence (data/scenes_state.json)          │
-  │   - USB Serial Manager (Auto-connect & simulation mode) │
+  │               ORDENADOR (Servidor Node.js)              │
+  │   - Servidor HTTP para la interfaz web                  │
+  │   - WebSocket para sincronización en tiempo real        │
+  │   - Persistencia de escenas (data/scenes_state.json)    │
+  │   - Gestor serie USB (detección automática o simulación)│
   └────────────────────────────┬────────────────────────────┘
-                               │ USB Serial (115200 Baud)
+                               │ Serie USB (115200 Baud)
                                ▼
   ┌─────────────────────────────────────────────────────────┐
-  │         ELEGOO MEGA 2560 (FastLED C++ Firmware)         │
-  │   - High-speed binary framing protocol (0xAA 0x55 ...)  │
-  │   - Digital Pin 6 to WS2812B DIN                        │
+  │           ELEGOO / ARDUINO MEGA 2560 (FastLED)          │
+  │   - Protocolo binario de alta velocidad (0xAA 0x55 ...) │
+  │   - Salida Pin 6 al DIN de la tira WS2812B              │
   └────────────────────────────┬────────────────────────────┘
-                               │ High-Speed PWM
+                               │ Señal PWM
                                ▼
   ┌─────────────────────────────────────────────────────────┐
-  │             WS2812B ADDRESSABLE LED STRIP               │
+  │               TIRA LED WS2812B (5V)                     │
   └─────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Visual Design & Aesthetics
+## Conexión de Hardware
 
-- **Cyberpunk Dark Green Palette**: Deep `#000000` black stage with electric `#00ff41` neon green accents.
-- **Stage Frame**: 4px solid green border.
-- **Grouping Boxes**: 1px crisp borders.
-- **Active Elements**: Fade-and-blink animation transitioning between electric green and deep crimson red (`#8b0000` / `#ff2233`).
-- **Mobile Landscape Optimized**: Full viewport lock, responsive Canvas resolution (logical `1000 x 500`), and multi-touch dragging.
+### Componentes necesarios:
+- **ELEGOO Mega 2560** (o Arduino Mega 2560).
+- **Tira LED WS2812B (5V)**.
+- **Fuente de alimentación externa de 5V DC** (aprox. 60 mA por LED a blanco máximo; ej. 5V 4A para 60–100 LEDs).
+- **Resistencia de 330Ω a 470Ω** (recomendada entre Pin 6 y DIN).
+- **Condensador de 1000 µF / 6.3V+** (recomendado en paralelo entre 5V y GND de la tira).
 
----
-
-## Artistic Glitch Engine (Cabaret Voltaire × Nam June Paik × Ryoji Ikeda)
-
-The glitch engine maps the **GLICH** slider (0% to 100%) and the three status indicators (`□□□`) across three distinct behavioral regimes:
-
-1. **Phase 1: Analog Degradation & Tape Sag (`■□□` / 1% – 33%)**
-   - *Inspiration*: Cabaret Voltaire early tape loops & degraded audio-visual broadcasts.
-   - Sporadic single-LED micro-dropouts (1–2 frame blackouts).
-   - Voltage sag simulation: subtle organic brightness dips and thermal drift.
-   - Perimeter noise on circle boundaries.
-
-2. **Phase 2: Chromatic Shatter & Bit-Flip Spikes (`■■□` / 34% – 66%)**
-   - *Inspiration*: Nam June Paik magnetic deflection & Rosa Menkman datamoshing.
-   - **Color Glitching**: RGB channel splitting (e.g. cyan beams tearing into emerald and cobalt spikes, or inverting to complementary magenta).
-   - Bit-crushed hue spikes (intermittent high-saturation flashframes in ultraviolet, searing crimson, electric lime).
-   - Cluster dropouts (2–5 adjacent LEDs flickering in syncopated bursts).
-   - Dynamic boundary jitter (circles micro-pulsing in radius).
-
-3. **Phase 3: High-Frequency Stroboscopic Sublime (`■■■` / 67% – 100%)**
-   - *Inspiration*: Ryoji Ikeda's *test pattern* & algorithmic stroboscopic sensory disorientation.
-   - Machine-gun stroboscopic shuttering (scaling from 15 Hz up to 35–45 Hz at 100%).
-   - Retinal after-image micro-blackouts.
-   - Polychromatic strobe at top values: rapidly alternating between blinding white, blackout, and hyper-saturated primaries.
-
----
-
-## Hardware Wiring Guide
-
-### Components:
-- **ELEGOO MEGA 2560** (or Arduino Mega 2560)
-- **WS2812B Addressable 5V LED Strip**
-- **5V DC External Power Supply** (calculate ~60mA per LED at full white, e.g. 5V 4A for 60-100 LEDs)
-- **330Ω to 470Ω Resistor** (optional, recommended between Mega Pin 6 and WS2812B DIN)
-- **1000µF 6.3V+ Capacitor** (optional, across 5V and GND near the strip)
-
-### Schematic:
+### Esquema de conexionado:
 ```
-[External 5V Power Supply]
-   (+) 5V  ───────────────────────────► WS2812B Strip +5V
-   (-) GND ──────────┬────────────────► WS2812B Strip GND
+[Fuente 5V Externa]
+   (+) 5V  ───────────────────────────► Tira WS2812B (+5V)
+   (-) GND ──────────┬────────────────► Tira WS2812B (GND)
                      │
                      ▼
 [ELEGOO MEGA 2560]
-   GND     ──────────┘ (COMMON GROUND IS ESSENTIAL)
-   Pin 6   ─── [330Ω] ───────────────► WS2812B Strip DIN
-   USB-B   ──────────────────────────► Computer USB Port
+   GND     ──────────┘ (MASA COMÚN OBLIGATORIA)
+   Pin 6   ─── [330Ω] ───────────────► Tira WS2812B (DIN)
+   USB-B   ──────────────────────────► Puerto USB del ordenador
 ```
 
 > [!IMPORTANT]
-> Always connect the **GND** of the external 5V power supply to the **GND** of the ELEGOO Mega 2560 to establish a common ground reference.
+> Es imprescindible conectar la masa (**GND**) de la fuente de 5V externa con el pin **GND** de la placa Mega 2560 para tener una masa común de referencia.
 
 ---
 
-## Flashing the Arduino Firmware
+## Carga del Firmware en Arduino
 
-1. Open **Arduino IDE**.
-2. Go to **Sketch > Include Library > Manage Libraries...** and search for **FastLED** by Daniel Garcia. Click **Install**.
-3. Open `arduino/rcv_mega_controller/rcv_mega_controller.ino`.
-4. Under **Tools > Board**, select **Arduino Mega or Mega 2560**.
-5. Under **Tools > Port**, select the COM port for your ELEGOO Mega 2560.
-6. Click **Upload** (`Ctrl + U`).
-7. When uploaded, the board will quickly flash a dim green pulse on the first 5 LEDs to confirm initialization and output `RCV_MEGA_2026_READY` at 115200 baud.
+1. Abre **Arduino IDE**.
+2. Ve a **Programa > Incluir Librería > Administrar Bibliotecas...**, busca **FastLED** (por Daniel Garcia) e instálala.
+3. Abre el archivo `arduino/rcv_mega_controller/rcv_mega_controller.ino`.
+4. En **Herramientas > Placa**, selecciona **Arduino Mega or Mega 2560**.
+5. En **Herramientas > Puerto**, selecciona el puerto COM de tu placa.
+6. Pulsa **Subir** (`Ctrl + U`).
+7. Al arrancar, los primeros 5 LEDs parpadearán en verde tenue y enviará `RCV_MEGA_2026_READY` por el puerto serie a 115200 baudios.
 
 ---
 
-## Running the Controller Server
+## Ejecución del Servidor
 
-### 1. Install Dependencies
+### 1. Instalar dependencias
 ```bash
 npm install
 ```
 
-### 2. Start the Server
+### 2. Iniciar el servidor
 ```bash
 npm start
 ```
-The server will print startup information:
+El servidor mostrará en la terminal las direcciones de conexión:
 ```
 ============================================================
    REQUIEM CABARET VOLTAIRE 2026 - LED STAGE CONTROLLER   
 ============================================================
- > Local Computer:    http://localhost:3000
- > Phone / Wi-Fi URL: http://192.168.0.219:3000
- > Serial Status:     Connected (COM3) / Simulated
+ > Ordenador Local:    http://localhost:3000
+ > Teléfono / Wi-Fi:   http://192.168.0.219:3000
+ > Estado Serie:       Conectado (COM3) / Simulado
 ============================================================
 ```
 
-### 3. Connect from Smartphone
-1. Connect your phone to the same Wi-Fi network (or computer's Wi-Fi mobile hotspot).
-2. Open the browser on your phone and navigate to `http://<WIFI_IP>:3000` (e.g. `http://192.168.0.219:3000`).
-3. Rotate your phone to **Landscape** mode.
-4. Enjoy real-time multi-touch control!
+### 3. Conexión desde el móvil
+1. Conecta el teléfono a la misma red Wi-Fi (o a la zona Wi-Fi creada por el ordenador).
+2. Abre el navegador del móvil y entra a `http://<IP_WIFI>:3000` (ejemplo: `http://192.168.0.219:3000`).
+3. Gira el móvil a posición **horizontal (landscape)**.
 
 ---
 
-## UI Operation Manual
+## Guía de la Interfaz
 
-### Modifiers (Left Panel)
-- **COLOR**: Vertical slider traversing the WS2812B spectrum (Vivid Red, Orange, Amber, Yellow, Lime, Cyber Green, Cyan, Cobalt, Violet, Magenta, Warm White, and **Pure White at the bottom max value**).
-- **GLICH**: Vertical slider with 3-box indicator (`□□□`, `■□□`, `■■□`, `■■■`) controlling the 3 glitch regimes and strobe frequency.
-- **SIZE**: Adjusts the radius of all selected circles (10% to 150%).
+### Modificadores (Panel Izquierdo)
+- **COLOR**: Deslizador vertical que recorre el espectro (rojo, naranja, ámbar, amarillo, lima, verde neón, cian, azul cobalto, violeta, magenta, blanco cálido y **blanco puro al final**).
+- **GLICH**: Deslizador vertical con indicador de 3 fases (`□□□` a `■■■`) para controlar la intensidad del fallo visual y frecuencia estroboscópica.
+- **SIZE**: Modifica el radio de los círculos seleccionados (10% a 150%).
 
-### Center Stage
-- **Segments**:
-  - Represent portions of the physical LED strip.
-  - Endpoints show solid green circles when selected, hollow circles when unselected.
-  - Drag endpoints or line bodies with your finger or mouse.
-  - Interactive LED dots light up in real time when inside any active circle.
-- **Circles**:
-  - Influence zones affecting the LEDs of all intersecting or layered segments.
-  - Solid border when selected, dotted border when unselected.
-  - Drag circles across the stage with finger/mouse.
+### Escenario Central
+- **Segmentos**:
+  - Representan tramos físicos de la tira LED.
+  - Los extremos se muestran en verde sólido al seleccionarse o con círculo hueco al deseleccionarse.
+  - Arrastra los extremos o el cuerpo de la línea con el dedo o ratón.
+  - Los puntos LED interactivos se iluminan en tiempo real cuando quedan dentro de un círculo activo.
+- **Círculos**:
+  - Zonas de influencia sobre los LEDs que quedan dentro de su área.
+  - Borde sólido al estar seleccionados y borde punteado al no estarlo.
+  - Arrastrables por el lienzo.
 
-### Mapping Groups (Top Right)
-- Displays active segments with Start and End LED indices (e.g. `AB 1 40`, `BC 41 80`).
-- Tap segment row to select/deselect.
-- Tap the numbers to edit the LED index range.
-- Click `+` to add a new segment (`AB`, `BC`, `CD`...).
+### Mapeo de Segmentos (Arriba a la Derecha)
+- Muestra la lista de segmentos con sus índices inicial y final (ej. `AB 1 40`, `BC 41 80`).
+- Toca una fila para seleccionarla.
+- Toca los números para editar el rango de LEDs.
+- Pulsa `+` para añadir un nuevo segmento (`AB`, `BC`, `CD`...).
 
-### Artistic Scenes Diamond Pad (Bottom Right)
-- 8 artistic scene buttons in a diamond tessellation: `!`, `?`, `/`, `[`, `-`, `:`, `>`, `~`.
-- **State Inheritance**: Switching to an unconfigured scene inherits the last active state. Once any element or modifier is changed, that scene branches into its own persistent state.
-- Active scene button blinks and fades in dark red.
+### Panel de Escenas en Rombo (Abajo a la Derecha)
+- 8 botones de escenas dispuestos en rombo: `!`, `?`, `/`, `[`, `-`, `:`, `>`, `~`.
+- **Herencia de estado**: Al cambiar a una escena no configurada, hereda la última escena activa. En cuanto modificas un elemento, esa escena guarda su propio estado independiente.
+- La escena activa parpadea en rojo oscuro.
 
-### Bottom Bar
-- **Created Circles**: Badges `(A)`, `(B)`, `(C)`... Tap to select/deselect.
-- **Predefined Circles**: 4 template slots (Teal, Dark Blue, Lime, Hollow Green). Tap to customize parameters, then tap the stage to place.
-- **`(+)` Button**: Tap and click stage to place a default circle.
-- **BORRAR ELEMENTO**: Deletes selected items (with confirmation modal).
-- **APAGAR ELEMENTO**: Toggles selected items on/off (displays blinking `[OFF]` badge).
+### Barra Inferior
+- **Círculos Creados**: Botones con etiquetas `(A)`, `(B)`, `(C)`... Tócalos para seleccionarlos o deseleccionarlos.
+- **Plantillas Predefinidas**: 4 ranuras rápidas para cambiar valores y pulsar sobre el lienzo para añadir.
+- **Botón `(+)`**: Añade un círculo estándar en el escenario.
+- **APAGAR ELEMENTO**: Activa/desactiva los elementos seleccionados (muestra indicador parpadeante `[OFF]`).
+- **BORRAR ELEMENTO**: Elimina los elementos seleccionados (con confirmación).

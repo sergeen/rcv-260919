@@ -69,10 +69,12 @@ app.use(express.static(path.join(__dirname, '..', 'public')));
 
 // REST APIs
 app.get('/api/status', (req, res) => {
+  const netInfo = getNetworkIps();
   res.json({
     ok: true,
     serial: serialManager.getStatus(),
-    wifiIp: getLocalIpAddress(),
+    wifiIp: netInfo.wifiIp,
+    hotspotIp: netInfo.hotspotIp,
     port: PORT
   });
 });

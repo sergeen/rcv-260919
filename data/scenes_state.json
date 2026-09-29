@@ -1,5 +1,5 @@
 {
-  "activeSceneId": "/",
+  "activeSceneId": ":",
   "scenes": {
     "~": {
       "isCustomized": true,
@@ -307,11 +307,11 @@
       "circles": [
         {
           "id": "A",
-          "x": 425.6727351681461,
-          "y": 281.8737907779345,
-          "size": 110,
+          "x": 705.9270216962525,
+          "y": 186.18918918918928,
+          "size": 194,
           "color": "#ffffff",
-          "glitch": 35,
+          "glitch": 0,
           "off": false
         }
       ]
@@ -502,8 +502,77 @@
     },
     ":": {
       "isCustomized": true,
-      "segments": [],
-      "circles": []
+      "segments": [
+        {
+          "id": "AB",
+          "p1": {
+            "x": 145.95660749506902,
+            "y": 85.58558558558559
+          },
+          "p2": {
+            "x": 882.6429980276133,
+            "y": 88.28828828828829
+          },
+          "startLed": 1,
+          "endLed": 107,
+          "off": false,
+          "color": "#0d4aff",
+          "glitch": 13
+        },
+        {
+          "id": "BC",
+          "p1": {
+            "x": 882.6429980276133,
+            "y": 87.38738738738738
+          },
+          "p2": {
+            "x": 882.6429980276133,
+            "y": 280.18018018018023
+          },
+          "startLed": 108,
+          "endLed": 135,
+          "off": false
+        },
+        {
+          "id": "CD",
+          "p1": {
+            "x": 881.6568047337278,
+            "y": 282.8828828828829
+          },
+          "p2": {
+            "x": 147.92899408284023,
+            "y": 282.8828828828829
+          },
+          "startLed": 136,
+          "endLed": 245,
+          "off": false
+        },
+        {
+          "id": "DE",
+          "p1": {
+            "x": 146.94280078895463,
+            "y": 283.78378378378375
+          },
+          "p2": {
+            "x": 146.94280078895463,
+            "y": 85.58558558558559
+          },
+          "startLed": 246,
+          "endLed": 285,
+          "off": false
+        }
+      ],
+      "circles": [
+        {
+          "id": "A",
+          "x": 376,
+          "y": 373,
+          "size": 10,
+          "color": "#ffc200",
+          "glitch": 0,
+          "off": false
+        }
+      ]
     },
     ">": {
       "isCustomized": true,
@@ -1052,8 +1121,6 @@
       "fill": "transparent"
     }
   ],
-  "selectedElementIds": [
-    "circle-A"
-  ],
-  "segmentsLocked": false
+  "selectedElementIds": [],
+  "segmentsLocked": true
 }

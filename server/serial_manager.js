@@ -132,14 +132,19 @@ class SerialManager extends EventEmitter {
 
       this.port.on('open', () => {
         this.isConnected = true;
-        this.isSimulated = false;
-        console.log(`[SerialManager] Connected to ${path}`);
-        this.emit('status', {
-          connected: true,
-          simulated: false,
-          port: path,
-          baudRate: this.baudRate
-        });
+        this.isReady = false;
+        console.log(`[SerialManager] Connected to ${path}, waiting for Arduino bootloader reset...`);
+        setTimeout(() => {
+          this.isReady = true;
+          this.isSimulated = false;
+          console.log(`[SerialManager] Arduino ready on ${path}`);
+          this.emit('status', {
+            connected: true,
+            simulated: false,
+            port: path,
+            baudRate: this.baudRate
+          });
+        }, 1500);
       });
 
       this.port.on('data', (data) => {
@@ -148,12 +153,15 @@ class SerialManager extends EventEmitter {
 
       this.port.on('error', (err) => {
         console.error(`[SerialManager] Port error on ${path}:`, err.message);
-        this.emit('error', err);
+        if (this.listenerCount('error') > 0) {
+          this.emit('error', err);
+        }
       });
 
       this.port.on('close', () => {
         console.log(`[SerialManager] Port closed on ${path}`);
         this.isConnected = false;
+        this.isReady = false;
         this.isSimulated = true;
         this.emit('status', {
           connected: false,
@@ -193,8 +201,8 @@ class SerialManager extends EventEmitter {
     this.stats.bytesSent += rgbBuffer.length;
     this.stats.lastFrameTime = Date.now();
 
-    if (!this.isConnected || !this.port || !this.port.isOpen) {
-      // Virtual/simulated mode: acknowledge smoothly without blocking
+    if (!this.isConnected || !this.isReady || !this.port || !this.port.isOpen) {
+      // Virtual/simulated mode or warming up: acknowledge smoothly without blocking
       return;
     }
 
